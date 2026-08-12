@@ -9,7 +9,7 @@ Prva verzija ide kao responsive web aplikacija, dobra za mobitel i desktop, umje
 ## Predlozeni stack
 
 - Next.js za aplikaciju i admin sucelje
-- PostgreSQL za bazu
+- PostgreSQL ili MySQL/MariaDB za bazu, ovisno o VPS/panel mogucnostima
 - Prisma ili Drizzle za rad s bazom
 - Privatna objektna pohrana za fotografije i video
 - OpenStreetMap za lokaciju i mapu
@@ -111,4 +111,3 @@ Prva verzija ide kao responsive web aplikacija, dobra za mobitel i desktop, umje
 - Push obavijesti
 - Integracije s institucijama
 - Zasebna mobilna aplikacija ako se pokaze potreba
-
