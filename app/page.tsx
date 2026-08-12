@@ -52,6 +52,11 @@ export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
   const [savedReportId, setSavedReportId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationFeedback, setLocationFeedback] = useState("");
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
+    null,
+  );
   const [formStartedAt, setFormStartedAt] = useState(0);
 
   useEffect(() => {
@@ -99,6 +104,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...report,
+          latitude: coordinates?.latitude ?? null,
+          longitude: coordinates?.longitude ?? null,
           website: String(data.get("website") || ""),
           formStartedAt: Number(data.get("formStartedAt") || formStartedAt),
         }),
@@ -111,6 +118,8 @@ export default function Home() {
       const result = (await response.json()) as ApiCreateResponse;
       setSavedReportId(result.report.id);
       form.reset();
+      setCoordinates(null);
+      setLocationFeedback("");
       setFormStartedAt(Date.now());
     } catch {
       setSavedReportId("privremeno spremljena lokalno");
@@ -123,6 +132,44 @@ export default function Home() {
     if (formStartedAt === 0) {
       setFormStartedAt(Date.now());
     }
+  }
+
+  function locateUser() {
+    markFormStarted();
+
+    if (!("geolocation" in navigator)) {
+      setLocationFeedback("Preglednik ne podržava dohvat lokacije.");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationFeedback("");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = Number(position.coords.latitude.toFixed(7));
+        const longitude = Number(position.coords.longitude.toFixed(7));
+        const placeInput = document.querySelector<HTMLInputElement>('input[name="place"]');
+
+        setCoordinates({ latitude, longitude });
+        setLocationFeedback("Lokacija je dohvaćena.");
+
+        if (placeInput && placeInput.value.trim() === "") {
+          placeInput.value = `${latitude}, ${longitude}`;
+        }
+
+        setIsLocating(false);
+      },
+      () => {
+        setLocationFeedback("Lokacija nije dohvaćena. Možeš je upisati ručno.");
+        setIsLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+        timeout: 12000,
+      },
+    );
   }
 
   return (
@@ -214,7 +261,16 @@ export default function Home() {
                 placeholder="Npr. naselje, ulica ili opis mjesta"
                 required
               />
+              <button
+                className="field-action"
+                disabled={isLocating}
+                onClick={locateUser}
+                type="button"
+              >
+                {isLocating ? "Tražim..." : "Dohvati lokaciju"}
+              </button>
             </div>
+            {locationFeedback ? <small className="field-note">{locationFeedback}</small> : null}
           </label>
           <label>
             Opis nepravilnosti

@@ -257,6 +257,24 @@ function flagsFromRow(array $row): array
     return $flags;
 }
 
+function coordinateFromData(array $data, string $key, float $min, float $max): ?string
+{
+    if (!array_key_exists($key, $data) || $data[$key] === null || $data[$key] === '') {
+        return null;
+    }
+
+    if (!is_numeric($data[$key])) {
+        respond(422, ['error' => "{$key} must be numeric."]);
+    }
+
+    $value = (float) $data[$key];
+    if ($value < $min || $value > $max) {
+        respond(422, ['error' => "{$key} is out of range."]);
+    }
+
+    return number_format($value, 7, '.', '');
+}
+
 function reportFromRow(array $row): array
 {
     return [
@@ -330,6 +348,8 @@ function createReport(PDO $db): void
     $description = trim((string) ($data['description'] ?? ''));
     $urgency = URGENCY_TO_DB[(string) ($data['urgency'] ?? 'Srednja')] ?? 'MEDIUM';
     $anonymous = !empty($data['anonymous']);
+    $latitude = coordinateFromData($data, 'latitude', -90, 90);
+    $longitude = coordinateFromData($data, 'longitude', -180, 180);
     $flags = array_values(array_filter(array_map('strval', $data['flags'] ?? [])));
 
     if ($category === '' || $place === '' || $animal === '' || $description === '') {
@@ -350,8 +370,8 @@ function createReport(PDO $db): void
 
         $statement = $db->prepare(
             'INSERT INTO `Report`
-             (`id`, `publicCode`, `category`, `animalType`, `description`, `locationText`, `urgency`, `status`, `isAnonymous`, `createdAt`, `updatedAt`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, "RECEIVED", ?, ?, ?)'
+             (`id`, `publicCode`, `category`, `animalType`, `description`, `locationText`, `latitude`, `longitude`, `urgency`, `status`, `isAnonymous`, `createdAt`, `updatedAt`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "RECEIVED", ?, ?, ?)'
         );
         $statement->execute([
             $reportId,
@@ -360,6 +380,8 @@ function createReport(PDO $db): void
             $animal,
             $description,
             $place,
+            $latitude,
+            $longitude,
             $urgency,
             $anonymous ? 1 : 0,
             $now,

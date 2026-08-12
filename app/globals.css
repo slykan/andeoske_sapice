@@ -272,6 +272,35 @@ textarea {
   padding-left: 42px;
 }
 
+.field-with-icon input:has(+ .field-action) {
+  padding-right: 166px;
+}
+
+.field-action {
+  background: var(--green);
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 0 10px;
+  position: absolute;
+  right: 5px;
+}
+
+.field-action:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.field-note {
+  color: var(--green);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .form-grid {
   display: grid;
   gap: 16px;
@@ -754,5 +783,24 @@ legend {
   .upload input {
     margin-left: 0;
     max-width: 100%;
+  }
+
+  .field-with-icon {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .field-with-icon svg {
+    top: 13px;
+  }
+
+  .field-with-icon input:has(+ .field-action) {
+    padding-right: 12px;
+  }
+
+  .field-action {
+    position: static;
+    width: 100%;
   }
 }
