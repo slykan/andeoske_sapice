@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  REPORTER
+  VOLUNTEER
+  ADMIN
+  ORGANIZATION
+}
+
+enum ReportStatus {
+  RECEIVED
+  IN_REVIEW
+  ASSIGNED
+  FORWARDED
+  IN_PROGRESS
+  CLOSED
+}
+
+enum ReportUrgency {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AttachmentKind {
+  PHOTO
+  VIDEO
+  DOCUMENT
+}
+
+enum AuditAction {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  NOTE_ADDED
+  ATTACHMENT_ADDED
+  REPORT_FORWARDED
+  CLOSED
+}
+
+model User {
+  id              String                @id @default(cuid())
+  email           String                @unique
+  name            String?
+  phone           String?
+  role            UserRole              @default(REPORTER)
+  organizationId  String?
+  organization    Organization?         @relation(fields: [organizationId], references: [id])
+  createdReports  Report[]              @relation("ReportCreatedBy")
+  assignedReports Report[]              @relation("ReportAssignedTo")
+  statusChanges   ReportStatusHistory[]
+  fieldNotes      FieldNote[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([organizationId])
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  city      String?
+  users     User[]
+  reports   Report[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Report {
+  id             String                @id @default(cuid())
+  publicCode     String                @unique
+  category       String
+  animalType     String
+  description    String                @db.Text
+  locationText   String
+  latitude       Decimal?              @db.Decimal(10, 7)
+  longitude      Decimal?              @db.Decimal(10, 7)
+  urgency        ReportUrgency         @default(MEDIUM)
+  status         ReportStatus          @default(RECEIVED)
+  isAnonymous    Boolean               @default(false)
+  reporterName   String?
+  reporterEmail  String?
+  reporterPhone  String?
+  createdById    String?
+  createdBy      User?                 @relation("ReportCreatedBy", fields: [createdById], references: [id])
+  assignedToId   String?
+  assignedTo     User?                 @relation("ReportAssignedTo", fields: [assignedToId], references: [id])
+  organizationId String?
+  organization   Organization?         @relation(fields: [organizationId], references: [id])
+  chainDetails   ChainDetails?
+  attachments    ReportAttachment[]
+  statusHistory  ReportStatusHistory[]
+  fieldNotes     FieldNote[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  closedAt       DateTime?
+
+  @@index([status])
+  @@index([urgency])
+  @@index([createdAt])
+  @@index([assignedToId])
+  @@index([organizationId])
+  @@index([createdById])
+}
+
+model ChainDetails {
+  id              String  @id @default(cuid())
+  reportId        String  @unique
+  report          Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  hasWater        Boolean @default(false)
+  hasFood         Boolean @default(false)
+  hasShelter      Boolean @default(false)
+  visibleInjuries Boolean @default(false)
+  chainLength     String?
+  notes           String? @db.Text
+}
+
+model ReportAttachment {
+  id           String         @id @default(cuid())
+  reportId     String
+  report       Report         @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  kind         AttachmentKind
+  fileName     String
+  storageKey   String
+  mimeType     String
+  byteSize     Int
+  exifStripped Boolean        @default(false)
+  uploadedById String?
+  createdAt    DateTime       @default(now())
+
+  @@index([reportId])
+}
+
+model ReportStatusHistory {
+  id          String        @id @default(cuid())
+  reportId    String
+  report      Report        @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  fromStatus  ReportStatus?
+  toStatus    ReportStatus
+  action      AuditAction   @default(STATUS_CHANGED)
+  note        String?       @db.Text
+  changedById String?
+  changedBy   User?         @relation(fields: [changedById], references: [id])
+  createdAt   DateTime      @default(now())
+
+  @@index([reportId])
+  @@index([changedById])
+}
+
+model FieldNote {
+  id        String    @id @default(cuid())
+  reportId  String
+  report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?     @relation(fields: [authorId], references: [id])
+  visitedAt DateTime?
+  note      String    @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([reportId])
+  @@index([authorId])
+}
