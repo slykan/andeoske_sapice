@@ -139,7 +139,30 @@ function makePublicCode(PDO $db): string
     respond(500, ['error' => 'Could not generate report code.']);
 }
 
-function reportFromRow(array $row, array $flags = []): array
+function flagsFromRow(array $row): array
+{
+    if (!empty($row['chainNotes'])) {
+        return array_values(array_filter(array_map('trim', explode(',', (string) $row['chainNotes']))));
+    }
+
+    $flags = [];
+    if (isset($row['hasWater']) && (int) $row['hasWater'] === 0) {
+        $flags[] = 'Nema vode';
+    }
+    if (isset($row['hasFood']) && (int) $row['hasFood'] === 0) {
+        $flags[] = 'Nema hrane';
+    }
+    if (isset($row['hasShelter']) && (int) $row['hasShelter'] === 0) {
+        $flags[] = 'Nema zaklona';
+    }
+    if (isset($row['visibleInjuries']) && (int) $row['visibleInjuries'] === 1) {
+        $flags[] = 'Vidljive ozljede';
+    }
+
+    return $flags;
+}
+
+function reportFromRow(array $row): array
 {
     return [
         'id' => $row['publicCode'],
@@ -149,7 +172,7 @@ function reportFromRow(array $row, array $flags = []): array
         'status' => STATUS_FROM_DB[$row['status']] ?? 'Zaprimljeno',
         'animal' => $row['animalType'],
         'description' => $row['description'],
-        'flags' => $flags,
+        'flags' => flagsFromRow($row),
         'anonymous' => (bool) $row['isAnonymous'],
     ];
 }
@@ -157,9 +180,23 @@ function reportFromRow(array $row, array $flags = []): array
 function listReports(PDO $db): void
 {
     $rows = $db->query(
-        'SELECT `publicCode`, `category`, `animalType`, `description`, `locationText`, `urgency`, `status`, `isAnonymous`
-         FROM `Report`
-         ORDER BY `createdAt` DESC
+        'SELECT
+            r.`publicCode`,
+            r.`category`,
+            r.`animalType`,
+            r.`description`,
+            r.`locationText`,
+            r.`urgency`,
+            r.`status`,
+            r.`isAnonymous`,
+            c.`hasWater`,
+            c.`hasFood`,
+            c.`hasShelter`,
+            c.`visibleInjuries`,
+            c.`notes` AS `chainNotes`
+         FROM `Report` r
+         LEFT JOIN `ChainDetails` c ON c.`reportId` = r.`id`
+         ORDER BY r.`createdAt` DESC
          LIMIT 100'
     )->fetchAll();
 
