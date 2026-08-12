@@ -117,6 +117,27 @@ function readJson(): array
     return $data;
 }
 
+function startAdminSession(): void
+{
+    session_name('andeoske_admin');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+function requireAdmin(): void
+{
+    startAdminSession();
+    if (empty($_SESSION['is_admin'])) {
+        respond(401, ['error' => 'Admin login required.']);
+    }
+}
+
 function makeId(string $prefix): string
 {
     return $prefix . '_' . bin2hex(random_bytes(12));
@@ -363,6 +384,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'PATCH') {
+    requireAdmin();
     updateStatus($db);
 }
 

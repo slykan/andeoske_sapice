@@ -369,6 +369,18 @@ legend {
   padding: 16px;
 }
 
+.admin-panel__header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.login-form {
+  display: grid;
+  gap: 12px;
+}
+
 .category-form {
   display: grid;
   gap: 10px;
@@ -414,6 +426,10 @@ legend {
   color: var(--green);
   font-size: 0.92rem;
   font-weight: 700;
+}
+
+.admin-feedback--error {
+  color: var(--coral);
 }
 
 .report-list {

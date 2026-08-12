@@ -19,6 +19,7 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const storageKey = "andeoske-sapice-reports";
 const apiPath = `${basePath}/api/reports.php`;
 const categoriesApiPath = `${basePath}/api/categories.php`;
+const sessionApiPath = `${basePath}/api/session.php`;
 
 const defaultCategories = [
   "Pas na lancu",
@@ -62,6 +63,10 @@ type ApiCreateResponse = {
 
 type ApiCategoriesResponse = {
   categories: string[];
+};
+
+type ApiSessionResponse = {
+  isAdmin: boolean;
 };
 
 const initialReports: Report[] = [
@@ -128,6 +133,8 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
   const [categories, setCategories] = useState(defaultCategories);
   const [categoryFeedback, setCategoryFeedback] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loginFeedback, setLoginFeedback] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -176,6 +183,25 @@ export default function Home() {
         }
       }
     }
+
+    async function loadSession() {
+      try {
+        const response = await fetch(sessionApiPath, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Session API unavailable");
+        }
+        const data = (await response.json()) as ApiSessionResponse;
+        if (isMounted) {
+          setIsAdmin(data.isAdmin);
+        }
+      } catch {
+        if (isMounted) {
+          setIsAdmin(false);
+        }
+      }
+    }
+
+    loadSession();
   }, []);
 
   useEffect(() => {
@@ -262,6 +288,10 @@ export default function Home() {
       return;
     }
 
+    if (!isAdmin) {
+      return;
+    }
+
     try {
       const response = await fetch(apiPath, {
         method: "PATCH",
@@ -285,6 +315,38 @@ export default function Home() {
     setDataSource("browser");
   }
 
+  async function login(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const password = String(data.get("password") || "");
+
+    try {
+      const response = await fetch(sessionApiPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Login failed");
+      }
+
+      setIsAdmin(true);
+      setLoginFeedback("");
+      form.reset();
+    } catch {
+      setIsAdmin(false);
+      setLoginFeedback("Prijava nije uspjela.");
+    }
+  }
+
+  async function logout() {
+    await fetch(sessionApiPath, { method: "DELETE" });
+    setIsAdmin(false);
+  }
+
   async function addCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -292,7 +354,7 @@ export default function Home() {
     const data = new FormData(form);
     const name = String(data.get("categoryName") || "").trim();
 
-    if (!name) {
+    if (!name || !isAdmin) {
       return;
     }
 
@@ -318,6 +380,10 @@ export default function Home() {
   }
 
   async function deleteCategory(name: string) {
+    if (!isAdmin) {
+      return;
+    }
+
     try {
       const response = await fetch(categoriesApiPath, {
         method: "DELETE",
@@ -511,40 +577,67 @@ export default function Home() {
           <div className="data-source">
             {dataSource === "database" ? "Podaci se čitaju iz baze." : "Demo način: podaci su spremljeni samo u ovom browseru."}
           </div>
-          <section className="admin-panel" aria-labelledby="category-admin-title">
-            <div>
-              <h3 id="category-admin-title">Kategorije prijava</h3>
-              <form className="category-form" onSubmit={addCategory}>
-                <input
-                  aria-label="Naziv nove kategorije"
-                  name="categoryName"
-                  placeholder="Nova kategorija"
-                />
-                <button className="button button--primary" type="submit">
-                  <Plus size={18} />
-                  Dodaj
+          <section className="admin-panel" aria-labelledby="admin-title">
+            <div className="admin-panel__header">
+              <h3 id="admin-title">Admin</h3>
+              {isAdmin ? (
+                <button className="button button--quiet" onClick={logout} type="button">
+                  Odjava
                 </button>
+              ) : null}
+            </div>
+            {isAdmin ? (
+              <>
+                <div>
+                  <h3>Kategorije prijava</h3>
+                  <form className="category-form" onSubmit={addCategory}>
+                    <input
+                      aria-label="Naziv nove kategorije"
+                      name="categoryName"
+                      placeholder="Nova kategorija"
+                    />
+                    <button className="button button--primary" type="submit">
+                      <Plus size={18} />
+                      Dodaj
+                    </button>
+                  </form>
+                </div>
+                <div className="category-list">
+                  {categories.map((category) => (
+                    <span className="category-pill" key={category}>
+                      {category}
+                      <button
+                        aria-label={`Obriši kategoriju ${category}`}
+                        onClick={() => deleteCategory(category)}
+                        type="button"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                {categoryFeedback ? (
+                  <p className="admin-feedback" role="status">
+                    {categoryFeedback}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <form className="login-form" onSubmit={login}>
+                <label>
+                  Admin lozinka
+                  <input name="password" placeholder="Lozinka" type="password" />
+                </label>
+                <button className="button button--primary" type="submit">
+                  Prijava
+                </button>
+                {loginFeedback ? (
+                  <p className="admin-feedback admin-feedback--error" role="status">
+                    {loginFeedback}
+                  </p>
+                ) : null}
               </form>
-            </div>
-            <div className="category-list">
-              {categories.map((category) => (
-                <span className="category-pill" key={category}>
-                  {category}
-                  <button
-                    aria-label={`Obriši kategoriju ${category}`}
-                    onClick={() => deleteCategory(category)}
-                    type="button"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </span>
-              ))}
-            </div>
-            {categoryFeedback ? (
-              <p className="admin-feedback" role="status">
-                {categoryFeedback}
-              </p>
-            ) : null}
+            )}
           </section>
           <div className="report-list">
             {visibleReports.map((report) => (
@@ -562,17 +655,21 @@ export default function Home() {
                 <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>
                   {report.urgency}
                 </span>
-                <label className="status-control">
-                  Status
-                  <select
-                    value={report.status}
-                    onChange={(event) => updateReportStatus(report.id, event.target.value)}
-                  >
-                    {statuses.map((status) => (
-                      <option key={status}>{status}</option>
-                    ))}
-                  </select>
-                </label>
+                {isAdmin ? (
+                  <label className="status-control">
+                    Status
+                    <select
+                      value={report.status}
+                      onChange={(event) => updateReportStatus(report.id, event.target.value)}
+                    >
+                      {statuses.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <span>{report.status}</span>
+                )}
               </article>
             ))}
             {visibleReports.length === 0 ? (
