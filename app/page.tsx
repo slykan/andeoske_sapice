@@ -50,6 +50,7 @@ type ApiCategoriesResponse = {
 
 export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
+  const [selectedCategory, setSelectedCategory] = useState("Pas na lancu");
   const [savedReportId, setSavedReportId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -69,6 +70,9 @@ export default function Home() {
         const data = (await response.json()) as ApiCategoriesResponse;
         if (Array.isArray(data.categories) && data.categories.length > 0) {
           setCategories(data.categories);
+          setSelectedCategory((current) =>
+            data.categories.includes(current) ? current : data.categories[0],
+          );
         }
       } catch {
         setCategories(defaultCategories);
@@ -118,6 +122,7 @@ export default function Home() {
       const result = (await response.json()) as ApiCreateResponse;
       setSavedReportId(result.report.id);
       form.reset();
+      setSelectedCategory(categories[0] || "Pas na lancu");
       setCoordinates(null);
       setLocationFeedback("");
       setFormStartedAt(Date.now());
@@ -246,7 +251,11 @@ export default function Home() {
           <input name="formStartedAt" type="hidden" value={formStartedAt} />
           <label>
             Kategorija
-            <select defaultValue="Pas na lancu" name="category">
+            <select
+              name="category"
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              value={selectedCategory}
+            >
               {categories.map((category) => (
                 <option key={category}>{category}</option>
               ))}
@@ -294,23 +303,25 @@ export default function Home() {
               </select>
             </label>
           </div>
-          <fieldset>
-            <legend>Pas na lancu</legend>
-            <div className="checks">
-              <label>
-                <input name="flags" type="checkbox" value="Nema vode" /> Nema vode
-              </label>
-              <label>
-                <input name="flags" type="checkbox" value="Nema hrane" /> Nema hrane
-              </label>
-              <label>
-                <input name="flags" type="checkbox" value="Nema zaklona" /> Nema zaklona
-              </label>
-              <label>
-                <input name="flags" type="checkbox" value="Vidljive ozljede" /> Vidljive ozljede
-              </label>
-            </div>
-          </fieldset>
+          {selectedCategory === "Pas na lancu" ? (
+            <fieldset>
+              <legend>Detalji uvjeta</legend>
+              <div className="checks">
+                <label>
+                  <input name="flags" type="checkbox" value="Nema vode" /> Nema vode
+                </label>
+                <label>
+                  <input name="flags" type="checkbox" value="Nema hrane" /> Nema hrane
+                </label>
+                <label>
+                  <input name="flags" type="checkbox" value="Nema zaklona" /> Nema zaklona
+                </label>
+                <label>
+                  <input name="flags" type="checkbox" value="Vidljive ozljede" /> Vidljive ozljede
+                </label>
+              </div>
+            </fieldset>
+          ) : null}
           <div className="upload">
             <Camera />
             <div>
