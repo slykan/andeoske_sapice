@@ -9,8 +9,22 @@ export NEXT_PUBLIC_BASE_PATH
 
 cd "$APP_DIR"
 
+if [ -f ".env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env.local
+  set +a
+fi
+
 git fetch origin "$BRANCH"
 git reset --hard "origin/$BRANCH"
+
+if [ -f ".env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env.local
+  set +a
+fi
 
 npm ci
 
