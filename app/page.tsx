@@ -17,17 +17,17 @@ const categories = [
   "Bez vode/hrane",
   "Ozljeda ili bolest",
   "Nehigijenski uvjeti",
-  "Napustena zivotinja",
-  "Zivotinja u vozilu",
+  "Napuštena životinja",
+  "Životinja u vozilu",
 ];
 
 const statuses = [
   "Zaprimljeno",
   "U provjeri",
   "Dodijeljeno",
-  "Proslijedjeno",
+  "Proslijeđeno",
   "U tijeku",
-  "Zakljuceno",
+  "Zaključeno",
 ];
 
 const reports = [
@@ -40,7 +40,7 @@ const reports = [
   },
   {
     id: "AS-2026-013",
-    category: "Nelijecena ozljeda",
+    category: "Neliječena ozljeda",
     place: "Velika Gorica",
     urgency: "Srednja",
     status: "Dodijeljeno",
@@ -50,7 +50,7 @@ const reports = [
     category: "Bez zaklona",
     place: "Samobor",
     urgency: "Niska",
-    status: "Zakljuceno",
+    status: "Zaključeno",
   },
 ];
 
@@ -64,7 +64,7 @@ export default function Home() {
         </div>
         <div className="hero__content">
           <nav className="topbar" aria-label="Glavna navigacija">
-            <strong>Andeoske sapice</strong>
+            <strong>Anđeoske šapice</strong>
             <div>
               <a href="#prijava">Prijava</a>
               <a href="#dashboard">Pregled</a>
@@ -73,11 +73,11 @@ export default function Home() {
           </nav>
           <div className="hero__copy">
             <span className="eyebrow">MVP prototip</span>
-            <h1>Andeoske sapice</h1>
+            <h1>Anđeoske šapice</h1>
             <p>
               Centralno mjesto za strukturiranu prijavu zanemarivanja i
-              zlostavljanja zivotinja, s jasnim tokom provjere, dodjele i
-              izvjestavanja.
+              zlostavljanja životinja, s jasnim tokom provjere, dodjele i
+              izvještavanja.
             </p>
             <div className="hero__actions">
               <a className="button button--primary" href="#prijava">
@@ -97,10 +97,10 @@ export default function Home() {
         <div className="notice">
           <AlertTriangle />
           <div>
-            <strong>Zivotinja je u neposrednoj opasnosti?</strong>
+            <strong>Životinja je u neposrednoj opasnosti?</strong>
             <p>
-              Prikazi jasnu uputu za kontaktiranje nadlezne sluzbe, policije
-              ili dezurne veterinarske sluzbe. App biljezi prijavu, ali ne
+              Prikaži jasnu uputu za kontaktiranje nadležne službe, policije
+              ili dežurne veterinarske službe. App bilježi prijavu, ali ne
               zamjenjuje hitni poziv.
             </p>
           </div>
@@ -109,7 +109,7 @@ export default function Home() {
 
       <section className="workspace" id="prijava">
         <div className="section-heading">
-          <span>Gradjanin</span>
+          <span>Građanin</span>
           <h2>Nova prijava</h2>
         </div>
         <form className="report-form">
@@ -122,7 +122,7 @@ export default function Home() {
             </select>
           </label>
           <label>
-            Lokacija ili priblizno podrucje
+            Lokacija ili približno područje
             <div className="field-with-icon">
               <MapPin size={18} />
               <input placeholder="Npr. naselje, ulica ili opis mjesta" />
@@ -134,8 +134,8 @@ export default function Home() {
           </label>
           <div className="form-grid">
             <label>
-              Vrsta zivotinje
-              <input placeholder="Pas, macka, drugo..." />
+              Vrsta životinje
+              <input placeholder="Pas, mačka, drugo..." />
             </label>
             <label>
               Hitnost
@@ -167,12 +167,12 @@ export default function Home() {
             <Camera />
             <div>
               <strong>Fotografije i video</strong>
-              <p>Privitci ce biti privatni i dostupni samo ovlastenima.</p>
+              <p>Privitci će biti privatni i dostupni samo ovlaštenima.</p>
             </div>
           </div>
           <label className="checkbox-line">
             <input type="checkbox" />
-            Zelim podnijeti anonimnu prijavu
+            Želim podnijeti anonimnu prijavu
           </label>
           <button className="button button--primary" type="button">
             <CheckCircle2 size={18} />
@@ -204,7 +204,7 @@ export default function Home() {
           </div>
         </div>
         <aside className="side-panel">
-          <h3>Status slucaja</h3>
+          <h3>Status slučaja</h3>
           <ol className="status-list">
             {statuses.map((status, index) => (
               <li key={status} className={index < 3 ? "is-active" : ""}>
@@ -220,7 +220,7 @@ export default function Home() {
         <article>
           <ShieldCheck />
           <h3>Privatnost</h3>
-          <p>Identitet prijavitelja, tocna lokacija i privitci nisu javni.</p>
+          <p>Identitet prijavitelja, točna lokacija i privitci nisu javni.</p>
         </article>
         <article>
           <UserRoundCheck />
@@ -230,12 +230,12 @@ export default function Home() {
         <article>
           <HeartHandshake />
           <h3>Volonteri</h3>
-          <p>Slucajevi se filtriraju prema podrucju, hitnosti i statusu.</p>
+          <p>Slučajevi se filtriraju prema području, hitnosti i statusu.</p>
         </article>
         <article>
           <FileText />
-          <h3>Izvjestaji</h3>
-          <p>Standardizirani PDF priprema podatke za nadlezna tijela.</p>
+          <h3>Izvještaji</h3>
+          <p>Standardizirani PDF priprema podatke za nadležna tijela.</p>
         </article>
       </section>
     </main>

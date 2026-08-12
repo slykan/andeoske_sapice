@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Andeoske sapice",
-  description: "Sigurna prijava zanemarivanja i zlostavljanja zivotinja.",
+  title: "Anđeoske šapice",
+  description: "Sigurna prijava zanemarivanja i zlostavljanja životinja.",
 };
 
 export default function RootLayout({
@@ -17,4 +17,3 @@ export default function RootLayout({
     </html>
   );
 }
-
