@@ -170,6 +170,11 @@ h3 {
   color: #fff;
 }
 
+.button--quiet {
+  background: #ece6da;
+  color: var(--ink);
+}
+
 .band,
 .workspace,
 .features {
@@ -339,6 +344,14 @@ legend {
   grid-template-columns: minmax(0, 1fr) 320px;
 }
 
+.dashboard-tools {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
+  margin-bottom: 18px;
+}
+
 .report-list {
   display: grid;
   gap: 10px;
@@ -351,7 +364,7 @@ legend {
   border-radius: 8px;
   display: grid;
   gap: 16px;
-  grid-template-columns: 1.2fr 1fr auto auto;
+  grid-template-columns: 1.2fr 1fr auto minmax(150px, 0.7fr);
   padding: 16px;
 }
 
@@ -366,6 +379,23 @@ legend {
   display: block;
   line-height: 1.45;
   margin-top: 6px;
+}
+
+.status-control {
+  gap: 6px;
+}
+
+.status-control select {
+  min-height: 38px;
+  padding-block: 7px;
+}
+
+.empty-state {
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  padding: 18px;
 }
 
 .urgency {
@@ -472,6 +502,7 @@ legend {
 
   .form-grid,
   .checks,
+  .dashboard-tools,
   .workspace--split,
   .features {
     grid-template-columns: 1fr;

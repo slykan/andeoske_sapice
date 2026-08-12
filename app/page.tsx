@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Camera,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const storageKey = "andeoske-sapice-reports";
 
 const categories = [
   "Pas na lancu",
@@ -32,6 +33,8 @@ const statuses = [
   "U tijeku",
   "Zaključeno",
 ];
+
+const urgencies = ["Visoka", "Srednja", "Niska"];
 
 type Report = {
   id: string;
@@ -82,14 +85,54 @@ const initialReports: Report[] = [
 ];
 
 export default function Home() {
-  const [reports, setReports] = useState(initialReports);
+  const [reports, setReports] = useState<Report[]>(() => {
+    if (typeof window === "undefined") {
+      return initialReports;
+    }
+
+    const savedReports = window.localStorage.getItem(storageKey);
+    if (!savedReports) {
+      return initialReports;
+    }
+
+    try {
+      const parsedReports = JSON.parse(savedReports) as Report[];
+      return Array.isArray(parsedReports) ? parsedReports : initialReports;
+    } catch {
+      window.localStorage.removeItem(storageKey);
+      return initialReports;
+    }
+  });
   const [savedReportId, setSavedReportId] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Svi statusi");
+  const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(storageKey, JSON.stringify(reports));
+    }
+  }, [reports]);
 
   const nextReportNumber = useMemo(() => {
     return reports.reduce((highest, report) => {
       const number = Number(report.id.split("-").at(-1));
       return Number.isFinite(number) ? Math.max(highest, number) : highest;
     }, 0);
+  }, [reports]);
+
+  const visibleReports = useMemo(() => {
+    return reports.filter((report) => {
+      const matchesStatus = statusFilter === "Svi statusi" || report.status === statusFilter;
+      const matchesUrgency = urgencyFilter === "Sve hitnosti" || report.urgency === urgencyFilter;
+      return matchesStatus && matchesUrgency;
+    });
+  }, [reports, statusFilter, urgencyFilter]);
+
+  const statusCounts = useMemo(() => {
+    return statuses.map((status) => ({
+      status,
+      count: reports.filter((report) => report.status === status).length,
+    }));
   }, [reports]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -115,6 +158,21 @@ export default function Home() {
     setReports((currentReports) => [newReport, ...currentReports]);
     setSavedReportId(reportId);
     form.reset();
+  }
+
+  function updateReportStatus(reportId: string, status: string) {
+    setReports((currentReports) =>
+      currentReports.map((report) =>
+        report.id === reportId ? { ...report, status } : report,
+      ),
+    );
+  }
+
+  function resetDemoData() {
+    setReports(initialReports);
+    setSavedReportId("");
+    setStatusFilter("Svi statusi");
+    setUrgencyFilter("Sve hitnosti");
   }
 
   return (
@@ -210,9 +268,9 @@ export default function Home() {
             <label>
               Hitnost
               <select defaultValue="Visoka" name="urgency">
-                <option>Visoka</option>
-                <option>Srednja</option>
-                <option>Niska</option>
+                {urgencies.map((urgency) => (
+                  <option key={urgency}>{urgency}</option>
+                ))}
               </select>
             </label>
           </div>
@@ -247,7 +305,7 @@ export default function Home() {
           </label>
           {savedReportId ? (
             <p className="form-feedback" role="status">
-              Prijava {savedReportId} je zaprimljena i dodana u operativni pregled.
+              Prijava {savedReportId} je zaprimljena i spremljena u ovaj browser.
             </p>
           ) : null}
           <button className="button button--primary" type="submit">
@@ -263,34 +321,70 @@ export default function Home() {
             <span>Volonteri i admin</span>
             <h2>Operativni pregled</h2>
           </div>
+          <div className="dashboard-tools">
+            <label>
+              Status
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                <option>Svi statusi</option>
+                {statuses.map((status) => (
+                  <option key={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Hitnost
+              <select value={urgencyFilter} onChange={(event) => setUrgencyFilter(event.target.value)}>
+                <option>Sve hitnosti</option>
+                {urgencies.map((urgency) => (
+                  <option key={urgency}>{urgency}</option>
+                ))}
+              </select>
+            </label>
+            <button className="button button--quiet" onClick={resetDemoData} type="button">
+              Vrati demo podatke
+            </button>
+          </div>
           <div className="report-list">
-            {reports.map((report) => (
+            {visibleReports.map((report) => (
               <article className="report-card" key={report.id}>
                 <div>
                   <strong>{report.id}</strong>
                   <p>{report.category}</p>
                   <small>
                     {report.animal}
-                    {report.flags.length ? ` · ${report.flags.join(", ")}` : ""}
-                    {report.anonymous ? " · anonimno" : ""}
+                    {report.flags.length ? ` - ${report.flags.join(", ")}` : ""}
+                    {report.anonymous ? " - anonimno" : ""}
                   </small>
                 </div>
                 <span>{report.place}</span>
                 <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>
                   {report.urgency}
                 </span>
-                <span>{report.status}</span>
+                <label className="status-control">
+                  Status
+                  <select
+                    value={report.status}
+                    onChange={(event) => updateReportStatus(report.id, event.target.value)}
+                  >
+                    {statuses.map((status) => (
+                      <option key={status}>{status}</option>
+                    ))}
+                  </select>
+                </label>
               </article>
             ))}
+            {visibleReports.length === 0 ? (
+              <p className="empty-state">Nema prijava za odabrane filtere.</p>
+            ) : null}
           </div>
         </div>
         <aside className="side-panel">
           <h3>Status slučaja</h3>
           <ol className="status-list">
-            {statuses.map((status, index) => (
-              <li key={status} className={index < 3 ? "is-active" : ""}>
-                <span>{index + 1}</span>
-                {status}
+            {statusCounts.map(({ status, count }, index) => (
+              <li key={status} className={count > 0 ? "is-active" : ""}>
+                <span>{count}</span>
+                {index + 1}. {status}
               </li>
             ))}
           </ol>
