@@ -31,6 +31,8 @@ type Report = {
   description: string;
   flags: string[];
   anonymous: boolean;
+  latitude: number | null;
+  longitude: number | null;
   regionId: string | null;
   regionName: string | null;
   assignedToId: string | null;
@@ -76,6 +78,20 @@ type CategoriesData = {
   categories: string[];
   subcategories?: Record<string, string[]>;
 };
+
+function mapUrl(latitude: number, longitude: number) {
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
+}
+
+function mapEmbedUrl(latitude: number, longitude: number) {
+  const delta = 0.004;
+  const left = longitude - delta;
+  const right = longitude + delta;
+  const top = latitude + delta;
+  const bottom = latitude - delta;
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${latitude}%2C${longitude}`;
+}
 
 export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -451,6 +467,24 @@ export default function AdminPage() {
                 <div className="report-card__place">
                   <span>{report.place}</span>
                   <small>{report.description}</small>
+                  {report.latitude !== null && report.longitude !== null ? (
+                    <div className="map-preview">
+                      <iframe
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={mapEmbedUrl(report.latitude, report.longitude)}
+                        title={`Mapa lokacije za prijavu ${report.id}`}
+                      />
+                      <a
+                        className="map-preview__link"
+                        href={mapUrl(report.latitude, report.longitude)}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Otvori mapu
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
                 <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>
                   {report.urgency}

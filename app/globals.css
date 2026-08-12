@@ -550,6 +550,34 @@ legend {
   overflow: hidden;
 }
 
+.map-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  height: 140px;
+  margin-top: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.map-preview iframe {
+  border: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.map-preview__link {
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  bottom: 8px;
+  color: var(--green);
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 6px 8px;
+  position: absolute;
+  right: 8px;
+}
+
 .report-card p,
 .report-card span,
 .report-card small {
