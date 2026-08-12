@@ -1,3 +1,6 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Camera,
@@ -30,13 +33,29 @@ const statuses = [
   "Zaključeno",
 ];
 
-const reports = [
+type Report = {
+  id: string;
+  category: string;
+  place: string;
+  urgency: string;
+  status: string;
+  animal: string;
+  description: string;
+  flags: string[];
+  anonymous: boolean;
+};
+
+const initialReports: Report[] = [
   {
     id: "AS-2026-014",
     category: "Pas na lancu",
     place: "Okolica Zagreba",
     urgency: "Visoka",
     status: "U provjeri",
+    animal: "Pas",
+    description: "Dugotrajno držanje na lancu bez vidljivog zaklona.",
+    flags: ["Nema zaklona"],
+    anonymous: false,
   },
   {
     id: "AS-2026-013",
@@ -44,6 +63,10 @@ const reports = [
     place: "Velika Gorica",
     urgency: "Srednja",
     status: "Dodijeljeno",
+    animal: "Mačka",
+    description: "Vidljiva ozljeda i otežano kretanje.",
+    flags: ["Vidljive ozljede"],
+    anonymous: false,
   },
   {
     id: "AS-2026-012",
@@ -51,10 +74,49 @@ const reports = [
     place: "Samobor",
     urgency: "Niska",
     status: "Zaključeno",
+    animal: "Pas",
+    description: "Provjereno na terenu i zaključeno.",
+    flags: [],
+    anonymous: true,
   },
 ];
 
 export default function Home() {
+  const [reports, setReports] = useState(initialReports);
+  const [savedReportId, setSavedReportId] = useState("");
+
+  const nextReportNumber = useMemo(() => {
+    return reports.reduce((highest, report) => {
+      const number = Number(report.id.split("-").at(-1));
+      return Number.isFinite(number) ? Math.max(highest, number) : highest;
+    }, 0);
+  }, [reports]);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const reportId = `AS-2026-${String(nextReportNumber + 1).padStart(3, "0")}`;
+    const flags = data.getAll("flags").map(String);
+
+    const newReport: Report = {
+      id: reportId,
+      category: String(data.get("category") || "Pas na lancu"),
+      place: String(data.get("place") || "Nepoznata lokacija"),
+      urgency: String(data.get("urgency") || "Srednja"),
+      status: "Zaprimljeno",
+      animal: String(data.get("animal") || "Nije navedeno"),
+      description: String(data.get("description") || ""),
+      flags,
+      anonymous: data.get("anonymous") === "on",
+    };
+
+    setReports((currentReports) => [newReport, ...currentReports]);
+    setSavedReportId(reportId);
+    form.reset();
+  }
+
   return (
     <main>
       <section className="hero">
@@ -112,10 +174,10 @@ export default function Home() {
           <span>Građanin</span>
           <h2>Nova prijava</h2>
         </div>
-        <form className="report-form">
+        <form className="report-form" onSubmit={handleSubmit}>
           <label>
             Kategorija
-            <select defaultValue="Pas na lancu">
+            <select defaultValue="Pas na lancu" name="category">
               {categories.map((category) => (
                 <option key={category}>{category}</option>
               ))}
@@ -125,21 +187,29 @@ export default function Home() {
             Lokacija ili približno područje
             <div className="field-with-icon">
               <MapPin size={18} />
-              <input placeholder="Npr. naselje, ulica ili opis mjesta" />
+              <input
+                name="place"
+                placeholder="Npr. naselje, ulica ili opis mjesta"
+                required
+              />
             </div>
           </label>
           <label>
             Opis nepravilnosti
-            <textarea placeholder="Opis uvjeta, trajanje problema, vidljive ozljede..." />
+            <textarea
+              name="description"
+              placeholder="Opis uvjeta, trajanje problema, vidljive ozljede..."
+              required
+            />
           </label>
           <div className="form-grid">
             <label>
               Vrsta životinje
-              <input placeholder="Pas, mačka, drugo..." />
+              <input name="animal" placeholder="Pas, mačka, drugo..." required />
             </label>
             <label>
               Hitnost
-              <select defaultValue="Visoka">
+              <select defaultValue="Visoka" name="urgency">
                 <option>Visoka</option>
                 <option>Srednja</option>
                 <option>Niska</option>
@@ -150,16 +220,16 @@ export default function Home() {
             <legend>Pas na lancu</legend>
             <div className="checks">
               <label>
-                <input type="checkbox" /> Nema vode
+                <input name="flags" type="checkbox" value="Nema vode" /> Nema vode
               </label>
               <label>
-                <input type="checkbox" /> Nema hrane
+                <input name="flags" type="checkbox" value="Nema hrane" /> Nema hrane
               </label>
               <label>
-                <input type="checkbox" /> Nema zaklona
+                <input name="flags" type="checkbox" value="Nema zaklona" /> Nema zaklona
               </label>
               <label>
-                <input type="checkbox" /> Vidljive ozljede
+                <input name="flags" type="checkbox" value="Vidljive ozljede" /> Vidljive ozljede
               </label>
             </div>
           </fieldset>
@@ -169,12 +239,18 @@ export default function Home() {
               <strong>Fotografije i video</strong>
               <p>Privitci će biti privatni i dostupni samo ovlaštenima.</p>
             </div>
+            <input aria-label="Dodaj fotografije ili video" multiple type="file" />
           </div>
           <label className="checkbox-line">
-            <input type="checkbox" />
+            <input name="anonymous" type="checkbox" />
             Želim podnijeti anonimnu prijavu
           </label>
-          <button className="button button--primary" type="button">
+          {savedReportId ? (
+            <p className="form-feedback" role="status">
+              Prijava {savedReportId} je zaprimljena i dodana u operativni pregled.
+            </p>
+          ) : null}
+          <button className="button button--primary" type="submit">
             <CheckCircle2 size={18} />
             Spremi prijavu
           </button>
@@ -193,6 +269,11 @@ export default function Home() {
                 <div>
                   <strong>{report.id}</strong>
                   <p>{report.category}</p>
+                  <small>
+                    {report.animal}
+                    {report.flags.length ? ` · ${report.flags.join(", ")}` : ""}
+                    {report.anonymous ? " · anonimno" : ""}
+                  </small>
                 </div>
                 <span>{report.place}</span>
                 <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>

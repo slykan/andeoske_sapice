@@ -318,6 +318,21 @@ legend {
   margin-top: 4px;
 }
 
+.upload input {
+  margin-left: auto;
+  max-width: 260px;
+}
+
+.form-feedback {
+  background: #edf7ef;
+  border: 1px solid #b8d8bf;
+  border-radius: 6px;
+  color: var(--green);
+  font-weight: 700;
+  line-height: 1.45;
+  padding: 12px 14px;
+}
+
 .workspace--split {
   display: grid;
   gap: 24px;
@@ -341,9 +356,16 @@ legend {
 }
 
 .report-card p,
-.report-card span {
+.report-card span,
+.report-card small {
   color: var(--muted);
   font-size: 0.92rem;
+}
+
+.report-card small {
+  display: block;
+  line-height: 1.45;
+  margin-top: 6px;
 }
 
 .urgency {
@@ -459,5 +481,14 @@ legend {
     align-items: flex-start;
     grid-template-columns: 1fr;
   }
-}
 
+  .upload {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .upload input {
+    margin-left: 0;
+    max-width: 100%;
+  }
+}
