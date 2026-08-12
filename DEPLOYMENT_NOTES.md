@@ -10,10 +10,13 @@ Projekt se razvija lokalno, commita u git repozitorij, a VPS povlaci promjene i 
 - SSH port: `22`
 - SSH user: `andeoske`
 - Privremeni URL: `https://vps.on-click.hr/~andeoske/`
-- Predlozena putanja aplikacije: `/home/andeoske/andeoske_sapice`
+- Source/backend putanja aplikacije: `/home/andeoske/andeoske_sapice`
+- Web root za temp URL: `/home/andeoske/public_html`
 - Repo: `https://github.com/slykan/andeoske_sapice.git`
 
-Napomena: privremeni `~andeoske` URL najcesce posluzi za staticke datoteke iz `public_html`. Za punu Next.js aplikaciju s autentifikacijom, bazom i API rutama trebat ce Node.js runtime preko hosting panela, `pm2`/`systemd`, ili reverse proxy prema Node procesu.
+Dogovoreni obrazac: source/backend folder zivi izvan web root-a, a `deploy.sh` povuce git promjene, napravi build i kopira javni output u `/home/andeoske/public_html`.
+
+Napomena: privremeni `~andeoske` URL posluzuje sadrzaj iz `public_html`. Ako prva verzija ide kao staticki build, taj model je idealan. Ako aplikacija treba server-side API rute, auth sesije ili upload kroz Node proces, backend mora raditi odvojeno, a frontend u `public_html` komunicira s njim preko API URL-a.
 
 ## Predlozeni tok
 
@@ -24,13 +27,11 @@ Napomena: privremeni `~andeoske` URL najcesce posluzi za staticke datoteke iz `p
    - `git push`
 
 2. Na VPS-u:
-   - `deploy.sh` udje u direktorij aplikacije
+   - `deploy.sh` udje u source/backend direktorij aplikacije
    - napravi `git pull`
    - instalira dependencyje
-   - generira Prisma/DB klijent ako ga koristimo
-   - pokrene migracije
    - napravi production build
-   - restarta servis preko `pm2` ili `systemd`
+   - kopira build output u `/home/andeoske/public_html`
 
 ## Tipicni deploy koraci za Next.js
 
@@ -39,6 +40,7 @@ Napomena: privremeni `~andeoske` URL najcesce posluzi za staticke datoteke iz `p
 set -euo pipefail
 
 APP_DIR="/home/andeoske/andeoske_sapice"
+PUBLIC_DIR="/home/andeoske/public_html"
 BRANCH="main"
 
 cd "$APP_DIR"
@@ -48,16 +50,17 @@ git reset --hard "origin/$BRANCH"
 npm ci
 npm run build
 
-pm2 restart andeoske-sapice || pm2 start npm --name andeoske-sapice -- start
-pm2 save
+mkdir -p "$PUBLIC_DIR"
+find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+cp -a out/. "$PUBLIC_DIR"/
 ```
 
 ## Sto treba dogovoriti za stvarni server
 
 - Putanja aplikacije na VPS-u
-- Koristi li se `pm2`, `systemd`, Docker ili nesto cetvrto
+- Hoce li MVP biti staticki frontend ili frontend + odvojeni backend
 - Node verzija
-- Domena i reverse proxy, najcesce Nginx
+- Domena i konacni web root
 - SSL certifikat, najcesce Let's Encrypt
 - Baza na istom VPS-u ili odvojeno
 - Gdje idu uploadani privitci

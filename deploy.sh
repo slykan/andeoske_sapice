@@ -2,8 +2,8 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/home/andeoske/andeoske_sapice}"
+PUBLIC_DIR="${PUBLIC_DIR:-/home/andeoske/public_html}"
 BRANCH="${BRANCH:-main}"
-APP_NAME="${APP_NAME:-andeoske-sapice}"
 
 cd "$APP_DIR"
 
@@ -19,9 +19,20 @@ fi
 
 npm run build
 
-if command -v pm2 >/dev/null 2>&1; then
-  pm2 restart "$APP_NAME" || pm2 start npm --name "$APP_NAME" -- start
-  pm2 save
+if [ -d "out" ]; then
+  echo "Deploying static export to $PUBLIC_DIR"
+  mkdir -p "$PUBLIC_DIR"
+  find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  cp -a out/. "$PUBLIC_DIR"/
+elif [ -d "dist" ]; then
+  echo "Deploying dist build to $PUBLIC_DIR"
+  mkdir -p "$PUBLIC_DIR"
+  find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  cp -a dist/. "$PUBLIC_DIR"/
 else
-  echo "pm2 nije pronadjen. Dodaj restart komandu za systemd/Docker ili instaliraj pm2."
+  echo "Nije pronadjen staticki build folder: out/ ili dist/."
+  echo "Ako aplikacija treba Node runtime, dodaj pm2/systemd restart umjesto kopiranja u public_html."
+  exit 1
 fi
+
+echo "Deployed!"
