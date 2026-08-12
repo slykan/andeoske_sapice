@@ -352,6 +352,13 @@ legend {
   margin-bottom: 18px;
 }
 
+.data-source {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
 .report-list {
   display: grid;
   gap: 10px;

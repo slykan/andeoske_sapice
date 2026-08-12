@@ -15,6 +15,7 @@ import {
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const storageKey = "andeoske-sapice-reports";
+const apiPath = `${basePath}/api/reports.php`;
 
 const categories = [
   "Pas na lancu",
@@ -46,6 +47,14 @@ type Report = {
   description: string;
   flags: string[];
   anonymous: boolean;
+};
+
+type ApiListResponse = {
+  reports: Report[];
+};
+
+type ApiCreateResponse = {
+  report: Report;
 };
 
 const initialReports: Report[] = [
@@ -84,34 +93,68 @@ const initialReports: Report[] = [
   },
 ];
 
+function readStoredReports() {
+  if (typeof window === "undefined") {
+    return initialReports;
+  }
+
+  const savedReports = window.localStorage.getItem(storageKey);
+  if (!savedReports) {
+    return initialReports;
+  }
+
+  try {
+    const parsedReports = JSON.parse(savedReports) as Report[];
+    return Array.isArray(parsedReports) ? parsedReports : initialReports;
+  } catch {
+    window.localStorage.removeItem(storageKey);
+    return initialReports;
+  }
+}
+
 export default function Home() {
-  const [reports, setReports] = useState<Report[]>(() => {
-    if (typeof window === "undefined") {
-      return initialReports;
-    }
-
-    const savedReports = window.localStorage.getItem(storageKey);
-    if (!savedReports) {
-      return initialReports;
-    }
-
-    try {
-      const parsedReports = JSON.parse(savedReports) as Report[];
-      return Array.isArray(parsedReports) ? parsedReports : initialReports;
-    } catch {
-      window.localStorage.removeItem(storageKey);
-      return initialReports;
-    }
-  });
+  const [reports, setReports] = useState<Report[]>(readStoredReports);
   const [savedReportId, setSavedReportId] = useState("");
   const [statusFilter, setStatusFilter] = useState("Svi statusi");
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
+  const [dataSource, setDataSource] = useState<"database" | "browser">("browser");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    let isMounted = true;
+
+    async function loadReports() {
+      try {
+        const response = await fetch(apiPath, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("API unavailable");
+        }
+
+        const data = (await response.json()) as ApiListResponse;
+        if (isMounted && Array.isArray(data.reports)) {
+          setReports(data.reports.length ? data.reports : initialReports);
+          setDataSource("database");
+        }
+      } catch {
+        if (isMounted) {
+          setReports(readStoredReports());
+          setDataSource("browser");
+        }
+      }
+    }
+
+    loadReports();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (dataSource === "browser") {
       window.localStorage.setItem(storageKey, JSON.stringify(reports));
     }
-  }, [reports]);
+  }, [dataSource, reports]);
 
   const nextReportNumber = useMemo(() => {
     return reports.reduce((highest, report) => {
@@ -135,16 +178,14 @@ export default function Home() {
     }));
   }, [reports]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const form = event.currentTarget;
     const data = new FormData(form);
-    const reportId = `AS-2026-${String(nextReportNumber + 1).padStart(3, "0")}`;
     const flags = data.getAll("flags").map(String);
-
-    const newReport: Report = {
-      id: reportId,
+    const draftReport: Report = {
+      id: `AS-2026-${String(nextReportNumber + 1).padStart(3, "0")}`,
       category: String(data.get("category") || "Pas na lancu"),
       place: String(data.get("place") || "Nepoznata lokacija"),
       urgency: String(data.get("urgency") || "Srednja"),
@@ -155,17 +196,57 @@ export default function Home() {
       anonymous: data.get("anonymous") === "on",
     };
 
-    setReports((currentReports) => [newReport, ...currentReports]);
-    setSavedReportId(reportId);
-    form.reset();
+    setIsSaving(true);
+
+    try {
+      const response = await fetch(apiPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draftReport),
+      });
+
+      if (!response.ok) {
+        throw new Error("API save failed");
+      }
+
+      const data = (await response.json()) as ApiCreateResponse;
+      setReports((currentReports) => [data.report, ...currentReports]);
+      setSavedReportId(data.report.id);
+      setDataSource("database");
+    } catch {
+      setReports((currentReports) => [draftReport, ...currentReports]);
+      setSavedReportId(draftReport.id);
+      setDataSource("browser");
+    } finally {
+      setIsSaving(false);
+      form.reset();
+    }
   }
 
-  function updateReportStatus(reportId: string, status: string) {
+  async function updateReportStatus(reportId: string, status: string) {
     setReports((currentReports) =>
       currentReports.map((report) =>
         report.id === reportId ? { ...report, status } : report,
       ),
     );
+
+    if (dataSource !== "database") {
+      return;
+    }
+
+    try {
+      const response = await fetch(apiPath, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reportId, status }),
+      });
+
+      if (!response.ok) {
+        throw new Error("API status update failed");
+      }
+    } catch {
+      setDataSource("browser");
+    }
   }
 
   function resetDemoData() {
@@ -173,6 +254,7 @@ export default function Home() {
     setSavedReportId("");
     setStatusFilter("Svi statusi");
     setUrgencyFilter("Sve hitnosti");
+    setDataSource("browser");
   }
 
   return (
@@ -305,12 +387,13 @@ export default function Home() {
           </label>
           {savedReportId ? (
             <p className="form-feedback" role="status">
-              Prijava {savedReportId} je zaprimljena i spremljena u ovaj browser.
+              Prijava {savedReportId} je zaprimljena
+              {dataSource === "database" ? " i spremljena u bazu." : " i spremljena u ovaj browser."}
             </p>
           ) : null}
-          <button className="button button--primary" type="submit">
+          <button className="button button--primary" disabled={isSaving} type="submit">
             <CheckCircle2 size={18} />
-            Spremi prijavu
+            {isSaving ? "Spremanje..." : "Spremi prijavu"}
           </button>
         </form>
       </section>
@@ -343,6 +426,9 @@ export default function Home() {
             <button className="button button--quiet" onClick={resetDemoData} type="button">
               Vrati demo podatke
             </button>
+          </div>
+          <div className="data-source">
+            {dataSource === "database" ? "Podaci se čitaju iz baze." : "Demo način: podaci su spremljeni samo u ovom browseru."}
           </div>
           <div className="report-list">
             {visibleReports.map((report) => (
