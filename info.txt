@@ -1,0 +1,138 @@
+Aplikacija bi mogla biti centralno mjesto za sigurnu i strukturiranu prijavu sumnje na zanemarivanje ili zlostavljanje životinja, s posebnim obrascem za nepravilno držanje pasa na lancu.
+
+Osnovni koncept
+
+Aplikacija bi povezivala:
+
+građane koji uoče problem
+provjerene volontere i udruge za zaštitu životinja
+nadležne službe, primjerice komunalno redarstvo, veterinarsku inspekciju ili policiju
+administratore koji provjeravaju prijave i sprječavaju zloupotrebu sustava
+Kako bi prijava funkcionirala
+
+Korisnik bi otvorio novu prijavu i unio:
+
+lokaciju događaja ili približnu lokaciju
+vrstu životinje
+opis nepravilnosti
+fotografije ili videozapise
+datum i vrijeme opažanja
+informaciju je li životinja trenutačno u neposrednoj opasnosti
+podatke o uvjetima držanja psa: duljina lanca, pristup vodi, hrani, zaklonu, vidljive ozljede i trajanje vezivanja
+kontakt podatke prijavitelja ili mogućnost anonimne prijave
+Nakon slanja prijava bi dobila jedinstveni broj i status, primjerice:
+
+Zaprimljeno → U provjeri → Dodijeljeno volonteru → Proslijeđeno nadležnoj službi → Postupanje u tijeku → Zaključeno
+
+Najvažnije funkcionalnosti
+
+Za građane
+
+jednostavan obrazac za prijavu
+automatsko određivanje lokacije
+prilaganje fotografija i videozapisa
+anonimna ili imenovana prijava
+praćenje statusa prijave
+dopunjavanje prijave novim dokazima
+hitni gumb s uputom koga kontaktirati kada je životinja neposredno ugrožena
+Za volontere
+
+pregled prijava prema području
+preuzimanje slučaja
+zapisnik s terena
+dodavanje fotografija i bilješki
+kontaktiranje prijavitelja bez otkrivanja njegova broja
+prosljeđivanje slučaja udruzi ili nadležnoj instituciji
+označavanje rizičnih ili ponovljenih slučajeva
+Za administratore
+
+provjera vjerodostojnosti prijava
+upravljanje korisnicima i volonterima
+uklanjanje lažnih ili zlonamjernih prijava
+skrivanje osobnih podataka i preciznih lokacija
+pregled statistike
+evidencija svih promjena i postupanja
+izrada standardiziranog PDF izvještaja za nadležna tijela
+Važne kategorije prijava
+
+Aplikacija ne bi trebala biti ograničena samo na pse na lancu. Mogle bi postojati kategorije:
+
+dugotrajno ili nepravilno držanje psa na lancu
+nedostatak vode, hrane ili zaklona
+fizičko zlostavljanje
+napuštanje životinje
+neliječene ozljede ili bolesti
+držanje u nehigijenskim uvjetima
+životinja zatvorena u vozilu
+sumnja na ilegalan uzgoj ili borbe životinja
+ozlijeđena ili ugrožena životinja na javnoj površini
+Zaštita privatnosti i sprječavanje zloupotrebe
+
+Ovo je posebno važno jer prijave mogu sadržavati osjetljive podatke.
+
+Aplikacija bi trebala:
+
+skrivati identitet prijavitelja od osobe koja je prijavljena
+ne prikazivati javno točnu adresu slučaja
+uklanjati podatke o lokaciji iz javno dostupnih fotografija
+imati jasne uvjete korištenja i pravila o lažnom prijavljivanju
+ograničiti pristup osobnim podacima samo ovlaštenim osobama
+evidentirati tko je pregledavao ili mijenjao prijavu
+definirati rok čuvanja fotografija i osobnih podataka
+imati postupak za brisanje ili ispravak netočnih podataka
+Ne bih preporučio javno prikazivanje imena, adresa ili fotografija vlasnika životinje. Aplikacija treba služiti za prijavu i institucionalno postupanje, a ne za javno prozivanje.
+
+Preporučeni MVP
+
+Prva verzija može biti relativno jednostavna:
+
+registracija građana i volontera
+obrazac za novu prijavu
+lokacija i učitavanje fotografija
+administrativna provjera prijava
+dodjeljivanje prijave volonteru
+promjena i praćenje statusa
+obavijesti putem e-pošte ili aplikacije
+izrada izvještaja koji se može poslati nadležnoj službi
+Javna karta, napredna analitika, automatsko prepoznavanje sadržaja fotografija i povezivanje s institucijama mogu se dodati kasnije.
+
+Moguća tehnička arhitektura
+
+Za početnu verziju:
+
+mobilna aplikacija: Flutter ili React Native
+administrativno sučelje: React ili Next.js
+serverski dio: Node.js, NestJS ili Django
+baza podataka: PostgreSQL
+pohrana fotografija: privatna objektna pohrana poput S3 kompatibilnog sustava
+karte i lokacija: OpenStreetMap
+obavijesti: Firebase Cloud Messaging i e-pošta
+prijava korisnika: e-pošta, telefon ili vanjski sustav autentifikacije
+Osnovni podaci u bazi
+
+Glavni zapisi bili bi:
+
+korisnik
+volonter
+udruga ili organizacija
+prijava
+životinja
+lokacija
+dokaz ili privitak
+bilješka s terena
+promjena statusa
+nadležna institucija
+komunikacija
+zapis aktivnosti
+Primjer naziva
+
+Mogući nazivi aplikacije:
+
+Čuvar životinja
+Glas za šape
+Sigurna šapa
+Prijavi za životinje
+Šapa na sigurnom
+Animal Alert
+Čuvari šapa
+ 
