@@ -26,6 +26,10 @@ const defaultCategories = [
   "Životinja u vozilu",
 ];
 
+const defaultSubcategories: Record<string, string[]> = {
+  "Pas na lancu": ["Nema vode", "Nema hrane", "Nema zaklona", "Vidljive ozljede"],
+};
+
 const urgencies = ["Visoka", "Srednja", "Niska"];
 
 type Report = {
@@ -46,10 +50,13 @@ type ApiCreateResponse = {
 
 type ApiCategoriesResponse = {
   categories: string[];
+  subcategories?: Record<string, string[]>;
 };
 
 export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
+  const [subcategories, setSubcategories] =
+    useState<Record<string, string[]>>(defaultSubcategories);
   const [selectedCategory, setSelectedCategory] = useState("Pas na lancu");
   const [savedReportId, setSavedReportId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -70,12 +77,14 @@ export default function Home() {
         const data = (await response.json()) as ApiCategoriesResponse;
         if (Array.isArray(data.categories) && data.categories.length > 0) {
           setCategories(data.categories);
+          setSubcategories(data.subcategories || {});
           setSelectedCategory((current) =>
             data.categories.includes(current) ? current : data.categories[0],
           );
         }
       } catch {
         setCategories(defaultCategories);
+        setSubcategories(defaultSubcategories);
       }
     }
 
@@ -177,6 +186,8 @@ export default function Home() {
     );
   }
 
+  const selectedSubcategories = subcategories[selectedCategory] || [];
+
   return (
     <main>
       <section className="hero">
@@ -197,8 +208,8 @@ export default function Home() {
             <span className="eyebrow">Sigurna prijava</span>
             <h1>Anđeoske šapice</h1>
             <p>
-              Centralno mjesto za strukturiranu prijavu zanemarivanja i
-              zlostavljanja životinja, s jasnim tokom provjere i postupanja.
+              Centralno mjesto za strukturiranu prijavu zanemarivanja i zlostavljanja
+              životinja, s jasnim tokom provjere i postupanja.
             </p>
             <div className="hero__actions">
               <a className="button button--primary" href="#prijava">
@@ -220,9 +231,8 @@ export default function Home() {
           <div>
             <strong>Životinja je u neposrednoj opasnosti?</strong>
             <p>
-              Kontaktiraj nadležnu službu, policiju ili dežurnu veterinarsku
-              službu. Ovaj obrazac bilježi prijavu, ali ne zamjenjuje hitni
-              poziv.
+              Kontaktiraj nadležnu službu, policiju ili dežurnu veterinarsku službu.
+              Ovaj obrazac bilježi prijavu, ali ne zamjenjuje hitni poziv.
             </p>
           </div>
         </div>
@@ -241,12 +251,7 @@ export default function Home() {
         >
           <label className="hp-field" aria-hidden="true">
             Web stranica
-            <input
-              autoComplete="off"
-              name="website"
-              tabIndex={-1}
-              type="text"
-            />
+            <input autoComplete="off" name="website" tabIndex={-1} type="text" />
           </label>
           <input name="formStartedAt" type="hidden" value={formStartedAt} />
           <label>
@@ -261,6 +266,18 @@ export default function Home() {
               ))}
             </select>
           </label>
+          {selectedSubcategories.length > 0 ? (
+            <fieldset>
+              <legend>Podkategorije</legend>
+              <div className="checks">
+                {selectedSubcategories.map((subcategory) => (
+                  <label key={subcategory}>
+                    <input name="flags" type="checkbox" value={subcategory} /> {subcategory}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
           <label>
             Lokacija ili približno područje
             <div className="field-with-icon">
@@ -303,25 +320,6 @@ export default function Home() {
               </select>
             </label>
           </div>
-          {selectedCategory === "Pas na lancu" ? (
-            <fieldset>
-              <legend>Detalji uvjeta</legend>
-              <div className="checks">
-                <label>
-                  <input name="flags" type="checkbox" value="Nema vode" /> Nema vode
-                </label>
-                <label>
-                  <input name="flags" type="checkbox" value="Nema hrane" /> Nema hrane
-                </label>
-                <label>
-                  <input name="flags" type="checkbox" value="Nema zaklona" /> Nema zaklona
-                </label>
-                <label>
-                  <input name="flags" type="checkbox" value="Vidljive ozljede" /> Vidljive ozljede
-                </label>
-              </div>
-            </fieldset>
-          ) : null}
           <div className="upload">
             <Camera />
             <div>

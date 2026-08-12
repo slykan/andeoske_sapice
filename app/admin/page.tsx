@@ -72,9 +72,15 @@ type AdminData = {
   users: AdminUser[];
 };
 
+type CategoriesData = {
+  categories: string[];
+  subcategories?: Record<string, string[]>;
+};
+
 export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [subcategories, setSubcategories] = useState<Record<string, string[]>>({});
   const [adminData, setAdminData] = useState<AdminData>({
     regions: [],
     organizations: [],
@@ -91,6 +97,7 @@ export default function AdminPage() {
   useEffect(() => {
     loadSession();
     loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -123,8 +130,13 @@ export default function AdminPage() {
 
   async function loadCategories() {
     const response = await fetch(categoriesApiPath, { cache: "no-store" });
-    const data = (await response.json()) as { categories: string[] };
+    const data = (await response.json()) as CategoriesData;
+    applyCategoriesData(data);
+  }
+
+  function applyCategoriesData(data: CategoriesData) {
     setCategories(Array.isArray(data.categories) ? data.categories : []);
+    setSubcategories(data.subcategories || {});
   }
 
   async function loadAdminData() {
@@ -188,13 +200,11 @@ export default function AdminPage() {
     const response = await fetch(categoriesApiPath, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ type: "category", name }),
     });
 
     if (response.ok) {
-      setCategories((current) =>
-        Array.from(new Set([...current, name])).sort((a, b) => a.localeCompare(b, "hr")),
-      );
+      applyCategoriesData((await response.json()) as CategoriesData);
       setCategoryFeedback(`Kategorija "${name}" je dodana.`);
       form.reset();
     } else {
@@ -206,14 +216,55 @@ export default function AdminPage() {
     const response = await fetch(categoriesApiPath, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ type: "category", name }),
     });
 
     if (response.ok) {
-      setCategories((current) => current.filter((category) => category !== name));
+      applyCategoriesData((await response.json()) as CategoriesData);
       setCategoryFeedback(`Kategorija "${name}" je obrisana iz obrasca.`);
     } else {
       setCategoryFeedback("Kategorija nije obrisana.");
+    }
+  }
+
+  async function addSubcategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const category = String(data.get("subcategoryCategory") || "").trim();
+    const label = String(data.get("subcategoryLabel") || "").trim();
+
+    if (!category || !label) {
+      return;
+    }
+
+    const response = await fetch(categoriesApiPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "subcategory", category, label }),
+    });
+
+    if (response.ok) {
+      applyCategoriesData((await response.json()) as CategoriesData);
+      setCategoryFeedback(`Podkategorija "${label}" je dodana.`);
+      form.reset();
+    } else {
+      setCategoryFeedback("Podkategorija nije spremljena.");
+    }
+  }
+
+  async function deleteSubcategory(category: string, label: string) {
+    const response = await fetch(categoriesApiPath, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "subcategory", category, label }),
+    });
+
+    if (response.ok) {
+      applyCategoriesData((await response.json()) as CategoriesData);
+      setCategoryFeedback(`Podkategorija "${label}" je obrisana iz obrasca.`);
+    } else {
+      setCategoryFeedback("Podkategorija nije obrisana.");
     }
   }
 
@@ -260,13 +311,7 @@ export default function AdminPage() {
 
     setReports((current) =>
       current.map((item) =>
-        item.id === report.id
-          ? {
-              ...item,
-              [field]: value || null,
-              status: "Dodijeljeno",
-            }
-          : item,
+        item.id === report.id ? { ...item, [field]: value || null, status: "Dodijeljeno" } : item,
       ),
     );
 
@@ -619,6 +664,40 @@ export default function AdminPage() {
                   </button>
                 </span>
               ))}
+            </div>
+
+            <h3>Podkategorije</h3>
+            <form className="subcategory-form" onSubmit={addSubcategory}>
+              <select aria-label="Kategorija za podkategoriju" name="subcategoryCategory">
+                {categories.map((category) => (
+                  <option key={category}>{category}</option>
+                ))}
+              </select>
+              <input
+                aria-label="Naziv nove podkategorije"
+                name="subcategoryLabel"
+                placeholder="Novi checkbox"
+              />
+              <button className="button button--primary" type="submit">
+                <Plus size={18} />
+                Dodaj
+              </button>
+            </form>
+            <div className="subcategory-list">
+              {categories.map((category) =>
+                (subcategories[category] || []).map((subcategory) => (
+                  <span className="category-pill" key={`${category}-${subcategory}`}>
+                    {category}: {subcategory}
+                    <button
+                      aria-label={`Obriši podkategoriju ${subcategory}`}
+                      onClick={() => deleteSubcategory(category, subcategory)}
+                      type="button"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </span>
+                )),
+              )}
             </div>
             {categoryFeedback ? (
               <p className="admin-feedback" role="status">

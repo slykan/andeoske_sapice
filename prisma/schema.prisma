@@ -92,11 +92,26 @@ model Organization {
 }
 
 model ReportCategory {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String              @id @default(cuid())
+  name          String              @unique
+  isActive      Boolean             @default(true)
+  subcategories ReportSubcategory[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model ReportSubcategory {
+  id         String         @id @default(cuid())
+  categoryId String
+  category   ReportCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  label      String
+  isActive   Boolean        @default(true)
+  flags      ReportFlag[]
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([categoryId, label])
+  @@index([categoryId])
 }
 
 model Report {
@@ -124,6 +139,7 @@ model Report {
   organization   Organization?         @relation(fields: [organizationId], references: [id])
   chainDetails   ChainDetails?
   attachments    ReportAttachment[]
+  flags          ReportFlag[]
   statusHistory  ReportStatusHistory[]
   fieldNotes     FieldNote[]
   createdAt      DateTime              @default(now())
@@ -137,6 +153,19 @@ model Report {
   @@index([assignedToId])
   @@index([organizationId])
   @@index([createdById])
+}
+
+model ReportFlag {
+  id            String             @id @default(cuid())
+  reportId      String
+  report        Report             @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  subcategoryId String?
+  subcategory   ReportSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  label         String
+  createdAt     DateTime           @default(now())
+
+  @@index([reportId])
+  @@index([subcategoryId])
 }
 
 model ChainDetails {

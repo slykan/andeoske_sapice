@@ -236,6 +236,10 @@ function makePublicCode(PDO $db): string
 
 function flagsFromRow(array $row): array
 {
+    if (!empty($row['reportFlags'])) {
+        return array_values(array_filter(array_map('trim', explode('||', (string) $row['reportFlags']))));
+    }
+
     if (!empty($row['chainNotes'])) {
         return array_values(array_filter(array_map('trim', explode(',', (string) $row['chainNotes']))));
     }
@@ -273,6 +277,48 @@ function coordinateFromData(array $data, string $key, float $min, float $max): ?
     }
 
     return number_format($value, 7, '.', '');
+}
+
+function selectedFlags(array $data): array
+{
+    $flags = [];
+
+    foreach (($data['flags'] ?? []) as $flag) {
+        $label = trim((string) $flag);
+        if ($label === '') {
+            continue;
+        }
+
+        if (mb_strlen($label) > 100) {
+            respond(422, ['error' => 'Selected details are too long.']);
+        }
+
+        $flags[] = $label;
+    }
+
+    return array_values(array_unique($flags));
+}
+
+function subcategoryIds(PDO $db, string $category, array $flags): array
+{
+    if (!$flags) {
+        return [];
+    }
+
+    $statement = $db->prepare(
+        'SELECT s.`id`, s.`label`
+         FROM `ReportSubcategory` s
+         INNER JOIN `ReportCategory` c ON c.`id` = s.`categoryId`
+         WHERE c.`name` = ? AND c.`isActive` = 1 AND s.`isActive` = 1'
+    );
+    $statement->execute([$category]);
+
+    $ids = [];
+    foreach ($statement->fetchAll() as $row) {
+        $ids[$row['label']] = $row['id'];
+    }
+
+    return $ids;
 }
 
 function reportFromRow(array $row): array
@@ -316,6 +362,7 @@ function listReports(PDO $db): void
             region.`name` AS `regionName`,
             assignee.`name` AS `assignedToName`,
             org.`name` AS `organizationName`,
+            GROUP_CONCAT(DISTINCT rf.`label` ORDER BY rf.`label` SEPARATOR "||") AS `reportFlags`,
             c.`hasWater`,
             c.`hasFood`,
             c.`hasShelter`,
@@ -325,7 +372,30 @@ function listReports(PDO $db): void
          LEFT JOIN `Region` region ON region.`id` = r.`regionId`
          LEFT JOIN `User` assignee ON assignee.`id` = r.`assignedToId`
          LEFT JOIN `Organization` org ON org.`id` = r.`organizationId`
+         LEFT JOIN `ReportFlag` rf ON rf.`reportId` = r.`id`
          LEFT JOIN `ChainDetails` c ON c.`reportId` = r.`id`
+         GROUP BY
+            r.`id`,
+            r.`publicCode`,
+            r.`category`,
+            r.`animalType`,
+            r.`description`,
+            r.`locationText`,
+            r.`urgency`,
+            r.`status`,
+            r.`isAnonymous`,
+            r.`regionId`,
+            r.`assignedToId`,
+            r.`organizationId`,
+            r.`createdAt`,
+            region.`name`,
+            assignee.`name`,
+            org.`name`,
+            c.`hasWater`,
+            c.`hasFood`,
+            c.`hasShelter`,
+            c.`visibleInjuries`,
+            c.`notes`
          ORDER BY r.`createdAt` DESC
          LIMIT 100'
     )->fetchAll();
@@ -350,7 +420,7 @@ function createReport(PDO $db): void
     $anonymous = !empty($data['anonymous']);
     $latitude = coordinateFromData($data, 'latitude', -90, 90);
     $longitude = coordinateFromData($data, 'longitude', -180, 180);
-    $flags = array_values(array_filter(array_map('strval', $data['flags'] ?? [])));
+    $flags = selectedFlags($data);
 
     if ($category === '' || $place === '' || $animal === '' || $description === '') {
         respond(422, ['error' => 'Missing required report fields.']);
@@ -387,6 +457,21 @@ function createReport(PDO $db): void
             $now,
             $now,
         ]);
+
+        $subcategoryIds = subcategoryIds($db, $category, $flags);
+        foreach ($flags as $flag) {
+            $statement = $db->prepare(
+                'INSERT INTO `ReportFlag` (`id`, `reportId`, `subcategoryId`, `label`, `createdAt`)
+                 VALUES (?, ?, ?, ?, ?)'
+            );
+            $statement->execute([
+                makeId('flag'),
+                $reportId,
+                $subcategoryIds[$flag] ?? null,
+                $flag,
+                $now,
+            ]);
+        }
 
         if ($category === 'Pas na lancu') {
             $statement = $db->prepare(

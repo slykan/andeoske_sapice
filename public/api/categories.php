@@ -108,29 +108,61 @@ function requireAdmin(): void
     }
 }
 
-function makeId(): string
+function makeId(string $prefix): string
 {
-    return 'cat_' . bin2hex(random_bytes(12));
+    return $prefix . '_' . bin2hex(random_bytes(12));
+}
+
+function shortText(array $data, string $key, int $max): string
+{
+    $value = trim((string) ($data[$key] ?? ''));
+
+    if ($value === '' || mb_strlen($value) > $max) {
+        respond(422, ['error' => "{$key} is required and too long values are not allowed."]);
+    }
+
+    return $value;
+}
+
+function categoryByName(PDO $db, string $name): ?array
+{
+    $statement = $db->prepare('SELECT `id`, `name` FROM `ReportCategory` WHERE `name` = ? LIMIT 1');
+    $statement->execute([$name]);
+    $category = $statement->fetch();
+
+    return $category ?: null;
 }
 
 function listCategories(PDO $db): void
 {
-    $rows = $db->query(
-        'SELECT `name` FROM `ReportCategory` WHERE `isActive` = 1 ORDER BY `name` ASC'
+    $categoryRows = $db->query(
+        'SELECT `id`, `name` FROM `ReportCategory` WHERE `isActive` = 1 ORDER BY `name` ASC'
     )->fetchAll();
 
-    respond(200, ['categories' => array_column($rows, 'name')]);
-}
+    $categories = array_column($categoryRows, 'name');
+    $subcategories = array_fill_keys($categories, []);
 
-function createCategory(PDO $db): void
-{
-    $data = readJson();
-    $name = trim((string) ($data['name'] ?? ''));
+    $rows = $db->query(
+        'SELECT c.`name` AS `categoryName`, s.`label`
+         FROM `ReportSubcategory` s
+         INNER JOIN `ReportCategory` c ON c.`id` = s.`categoryId`
+         WHERE c.`isActive` = 1 AND s.`isActive` = 1
+         ORDER BY c.`name` ASC, s.`label` ASC'
+    )->fetchAll();
 
-    if ($name === '' || mb_strlen($name) > 80) {
-        respond(422, ['error' => 'Category name is required and must be shorter than 80 characters.']);
+    foreach ($rows as $row) {
+        $subcategories[$row['categoryName']][] = $row['label'];
     }
 
+    respond(200, [
+        'categories' => $categories,
+        'subcategories' => $subcategories,
+    ]);
+}
+
+function createCategory(PDO $db, array $data): void
+{
+    $name = shortText($data, 'name', 80);
     $now = date('Y-m-d H:i:s');
 
     try {
@@ -139,22 +171,43 @@ function createCategory(PDO $db): void
              VALUES (?, ?, 1, ?, ?)
              ON DUPLICATE KEY UPDATE `isActive` = 1, `updatedAt` = VALUES(`updatedAt`)'
         );
-        $statement->execute([makeId(), $name, $now, $now]);
+        $statement->execute([makeId('cat'), $name, $now, $now]);
     } catch (Throwable) {
         respond(500, ['error' => 'Could not save category.']);
     }
 
-    respond(201, ['category' => $name]);
+    listCategories($db);
 }
 
-function deleteCategory(PDO $db): void
+function createSubcategory(PDO $db, array $data): void
 {
-    $data = readJson();
-    $name = trim((string) ($data['name'] ?? ''));
+    $categoryName = shortText($data, 'category', 80);
+    $label = shortText($data, 'label', 100);
+    $category = categoryByName($db, $categoryName);
 
-    if ($name === '') {
-        respond(422, ['error' => 'Category name is required.']);
+    if (!$category) {
+        respond(404, ['error' => 'Category not found.']);
     }
+
+    $now = date('Y-m-d H:i:s');
+
+    try {
+        $statement = $db->prepare(
+            'INSERT INTO `ReportSubcategory` (`id`, `categoryId`, `label`, `isActive`, `createdAt`, `updatedAt`)
+             VALUES (?, ?, ?, 1, ?, ?)
+             ON DUPLICATE KEY UPDATE `isActive` = 1, `updatedAt` = VALUES(`updatedAt`)'
+        );
+        $statement->execute([makeId('sub'), $category['id'], $label, $now, $now]);
+    } catch (Throwable) {
+        respond(500, ['error' => 'Could not save subcategory.']);
+    }
+
+    listCategories($db);
+}
+
+function deleteCategory(PDO $db, array $data): void
+{
+    $name = shortText($data, 'name', 80);
 
     try {
         $statement = $db->prepare('UPDATE `ReportCategory` SET `isActive` = 0, `updatedAt` = ? WHERE `name` = ?');
@@ -163,7 +216,27 @@ function deleteCategory(PDO $db): void
         respond(500, ['error' => 'Could not delete category.']);
     }
 
-    respond(200, ['category' => $name]);
+    listCategories($db);
+}
+
+function deleteSubcategory(PDO $db, array $data): void
+{
+    $categoryName = shortText($data, 'category', 80);
+    $label = shortText($data, 'label', 100);
+
+    try {
+        $statement = $db->prepare(
+            'UPDATE `ReportSubcategory` s
+             INNER JOIN `ReportCategory` c ON c.`id` = s.`categoryId`
+             SET s.`isActive` = 0, s.`updatedAt` = ?
+             WHERE c.`name` = ? AND s.`label` = ?'
+        );
+        $statement->execute([date('Y-m-d H:i:s'), $categoryName, $label]);
+    } catch (Throwable) {
+        respond(500, ['error' => 'Could not delete subcategory.']);
+    }
+
+    listCategories($db);
 }
 
 $db = pdo();
@@ -175,12 +248,24 @@ if ($method === 'GET') {
 
 if ($method === 'POST') {
     requireAdmin();
-    createCategory($db);
+    $data = readJson();
+
+    if (($data['type'] ?? 'category') === 'subcategory') {
+        createSubcategory($db, $data);
+    }
+
+    createCategory($db, $data);
 }
 
 if ($method === 'DELETE') {
     requireAdmin();
-    deleteCategory($db);
+    $data = readJson();
+
+    if (($data['type'] ?? 'category') === 'subcategory') {
+        deleteSubcategory($db, $data);
+    }
+
+    deleteCategory($db, $data);
 }
 
 respond(405, ['error' => 'Method not allowed.']);

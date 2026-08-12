@@ -429,6 +429,12 @@ legend {
   margin-top: 12px;
 }
 
+.subcategory-form {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) auto;
+}
+
 .stack-form {
   display: grid;
   gap: 10px;
@@ -457,6 +463,12 @@ legend {
 }
 
 .category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subcategory-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -768,6 +780,10 @@ legend {
   }
 
   .category-form {
+    grid-template-columns: 1fr;
+  }
+
+  .subcategory-form {
     grid-template-columns: 1fr;
   }
 
