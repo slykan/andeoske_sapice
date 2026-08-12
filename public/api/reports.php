@@ -261,6 +261,7 @@ function reportFromRow(array $row): array
 {
     return [
         'id' => $row['publicCode'],
+        'dbId' => $row['reportId'],
         'category' => $row['category'],
         'place' => $row['locationText'],
         'urgency' => URGENCY_FROM_DB[$row['urgency']] ?? 'Srednja',
@@ -269,6 +270,12 @@ function reportFromRow(array $row): array
         'description' => $row['description'],
         'flags' => flagsFromRow($row),
         'anonymous' => (bool) $row['isAnonymous'],
+        'regionId' => $row['regionId'],
+        'regionName' => $row['regionName'],
+        'assignedToId' => $row['assignedToId'],
+        'assignedToName' => $row['assignedToName'],
+        'organizationId' => $row['organizationId'],
+        'organizationName' => $row['organizationName'],
     ];
 }
 
@@ -276,6 +283,7 @@ function listReports(PDO $db): void
 {
     $rows = $db->query(
         'SELECT
+            r.`id` AS `reportId`,
             r.`publicCode`,
             r.`category`,
             r.`animalType`,
@@ -284,12 +292,21 @@ function listReports(PDO $db): void
             r.`urgency`,
             r.`status`,
             r.`isAnonymous`,
+            r.`regionId`,
+            r.`assignedToId`,
+            r.`organizationId`,
+            region.`name` AS `regionName`,
+            assignee.`name` AS `assignedToName`,
+            org.`name` AS `organizationName`,
             c.`hasWater`,
             c.`hasFood`,
             c.`hasShelter`,
             c.`visibleInjuries`,
             c.`notes` AS `chainNotes`
          FROM `Report` r
+         LEFT JOIN `Region` region ON region.`id` = r.`regionId`
+         LEFT JOIN `User` assignee ON assignee.`id` = r.`assignedToId`
+         LEFT JOIN `Organization` org ON org.`id` = r.`organizationId`
          LEFT JOIN `ChainDetails` c ON c.`reportId` = r.`id`
          ORDER BY r.`createdAt` DESC
          LIMIT 100'
@@ -456,6 +473,7 @@ $db = pdo();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
+    requireAdmin();
     listReports($db);
 }
 

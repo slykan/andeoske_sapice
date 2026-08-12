@@ -1,12 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Building2, MapPinned, Plus, Trash2, UserRoundPlus } from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const apiPath = `${basePath}/api/reports.php`;
+const reportsApiPath = `${basePath}/api/reports.php`;
 const categoriesApiPath = `${basePath}/api/categories.php`;
 const sessionApiPath = `${basePath}/api/session.php`;
+const adminApiPath = `${basePath}/api/admin.php`;
 
 const statuses = [
   "Zaprimljeno",
@@ -18,6 +19,7 @@ const statuses = [
 ];
 
 const urgencies = ["Visoka", "Srednja", "Niska"];
+const userRoles = ["VOLUNTEER", "ADMIN", "ORGANIZATION", "REPORTER"];
 
 type Report = {
   id: string;
@@ -29,22 +31,74 @@ type Report = {
   description: string;
   flags: string[];
   anonymous: boolean;
+  regionId: string | null;
+  regionName: string | null;
+  assignedToId: string | null;
+  assignedToName: string | null;
+  organizationId: string | null;
+  organizationName: string | null;
+};
+
+type Region = {
+  id: string;
+  name: string;
+};
+
+type Organization = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  regionId: string | null;
+  regionName: string | null;
+};
+
+type AdminUser = {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  role: string;
+  regionId: string | null;
+  regionName: string | null;
+  organizationId: string | null;
+  organizationName: string | null;
+};
+
+type AdminData = {
+  regions: Region[];
+  organizations: Organization[];
+  users: AdminUser[];
 };
 
 export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [adminData, setAdminData] = useState<AdminData>({
+    regions: [],
+    organizations: [],
+    users: [],
+  });
   const [isAdmin, setIsAdmin] = useState(false);
   const [loginFeedback, setLoginFeedback] = useState("");
   const [categoryFeedback, setCategoryFeedback] = useState("");
+  const [adminFeedback, setAdminFeedback] = useState("");
   const [statusFilter, setStatusFilter] = useState("Svi statusi");
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
+  const [regionFilter, setRegionFilter] = useState("Sve regije");
 
   useEffect(() => {
     loadSession();
-    loadReports();
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadReports();
+      loadAdminData();
+    }
+  }, [isAdmin]);
 
   async function loadSession() {
     try {
@@ -57,7 +111,12 @@ export default function AdminPage() {
   }
 
   async function loadReports() {
-    const response = await fetch(apiPath, { cache: "no-store" });
+    const response = await fetch(reportsApiPath, { cache: "no-store" });
+    if (!response.ok) {
+      setReports([]);
+      return;
+    }
+
     const data = (await response.json()) as { reports: Report[] };
     setReports(Array.isArray(data.reports) ? data.reports : []);
   }
@@ -66,6 +125,21 @@ export default function AdminPage() {
     const response = await fetch(categoriesApiPath, { cache: "no-store" });
     const data = (await response.json()) as { categories: string[] };
     setCategories(Array.isArray(data.categories) ? data.categories : []);
+  }
+
+  async function loadAdminData() {
+    const response = await fetch(adminApiPath, { cache: "no-store" });
+    if (!response.ok) {
+      setAdminData({ regions: [], organizations: [], users: [] });
+      return;
+    }
+
+    const data = (await response.json()) as AdminData;
+    setAdminData({
+      regions: Array.isArray(data.regions) ? data.regions : [],
+      organizations: Array.isArray(data.organizations) ? data.organizations : [],
+      users: Array.isArray(data.users) ? data.users : [],
+    });
   }
 
   async function login(event: FormEvent<HTMLFormElement>) {
@@ -97,6 +171,8 @@ export default function AdminPage() {
   async function logout() {
     await fetch(sessionApiPath, { method: "DELETE" });
     setIsAdmin(false);
+    setReports([]);
+    setAdminData({ regions: [], organizations: [], users: [] });
   }
 
   async function addCategory(event: FormEvent<HTMLFormElement>) {
@@ -141,12 +217,34 @@ export default function AdminPage() {
     }
   }
 
+  async function createAdminEntity(event: FormEvent<HTMLFormElement>, type: string) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    const response = await fetch(adminApiPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, ...data }),
+    });
+
+    if (response.ok) {
+      const nextData = (await response.json()) as AdminData;
+      setAdminData(nextData);
+      setAdminFeedback("Spremljeno.");
+      form.reset();
+      return;
+    }
+
+    setAdminFeedback("Nije spremljeno. Provjeri obavezna polja.");
+  }
+
   async function updateReportStatus(reportId: string, status: string) {
     setReports((current) =>
       current.map((report) => (report.id === reportId ? { ...report, status } : report)),
     );
 
-    const response = await fetch(apiPath, {
+    const response = await fetch(reportsApiPath, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: reportId, status }),
@@ -157,13 +255,57 @@ export default function AdminPage() {
     }
   }
 
+  async function assignReport(report: Report, field: keyof Report, value: string) {
+    const nextReport = { ...report, [field]: value || null };
+
+    setReports((current) =>
+      current.map((item) =>
+        item.id === report.id
+          ? {
+              ...item,
+              [field]: value || null,
+              status: "Dodijeljeno",
+            }
+          : item,
+      ),
+    );
+
+    const response = await fetch(adminApiPath, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "assignment",
+        reportId: report.id,
+        regionId: nextReport.regionId || "",
+        organizationId: nextReport.organizationId || "",
+        assignedToId: nextReport.assignedToId || "",
+      }),
+    });
+
+    if (!response.ok) {
+      await loadReports();
+      return;
+    }
+
+    await loadReports();
+  }
+
+  const volunteers = useMemo(
+    () => adminData.users.filter((user) => user.role === "VOLUNTEER" || user.role === "ADMIN"),
+    [adminData.users],
+  );
+
   const visibleReports = useMemo(() => {
     return reports.filter((report) => {
       const matchesStatus = statusFilter === "Svi statusi" || report.status === statusFilter;
       const matchesUrgency = urgencyFilter === "Sve hitnosti" || report.urgency === urgencyFilter;
-      return matchesStatus && matchesUrgency;
+      const matchesRegion =
+        regionFilter === "Sve regije" ||
+        (regionFilter === "Bez regije" && !report.regionId) ||
+        report.regionId === regionFilter;
+      return matchesStatus && matchesUrgency && matchesRegion;
     });
-  }, [reports, statusFilter, urgencyFilter]);
+  }, [reports, statusFilter, urgencyFilter, regionFilter]);
 
   const statusCounts = useMemo(() => {
     return statuses.map((status) => ({
@@ -202,7 +344,7 @@ export default function AdminPage() {
       <header className="admin-topbar">
         <div>
           <span>Anđeoske šapice</span>
-          <h1>Admin</h1>
+          <h1>Admin operativa</h1>
         </div>
         <nav>
           <a className="button button--quiet" href={`${basePath}/`}>
@@ -216,7 +358,7 @@ export default function AdminPage() {
 
       <section className="admin-grid">
         <div className="admin-main">
-          <div className="dashboard-tools">
+          <div className="dashboard-tools dashboard-tools--wide">
             <label>
               Status
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -235,11 +377,24 @@ export default function AdminPage() {
                 ))}
               </select>
             </label>
+            <label>
+              Regija
+              <select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}>
+                <option>Sve regije</option>
+                <option>Bez regije</option>
+                {adminData.regions.map((region) => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
+
           <div className="report-list">
             {visibleReports.map((report) => (
-              <article className="report-card" key={report.id}>
-                <div>
+              <article className="report-card report-card--ops" key={report.id}>
+                <div className="report-card__summary">
                   <strong>{report.id}</strong>
                   <p>{report.category}</p>
                   <small>
@@ -248,7 +403,10 @@ export default function AdminPage() {
                     {report.anonymous ? " - anonimno" : ""}
                   </small>
                 </div>
-                <span>{report.place}</span>
+                <div className="report-card__place">
+                  <span>{report.place}</span>
+                  <small>{report.description}</small>
+                </div>
                 <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>
                   {report.urgency}
                 </span>
@@ -263,6 +421,50 @@ export default function AdminPage() {
                     ))}
                   </select>
                 </label>
+                <div className="assignment-grid">
+                  <label>
+                    Regija
+                    <select
+                      value={report.regionId || ""}
+                      onChange={(event) => assignReport(report, "regionId", event.target.value)}
+                    >
+                      <option value="">Bez regije</option>
+                      {adminData.regions.map((region) => (
+                        <option key={region.id} value={region.id}>
+                          {region.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Grupa
+                    <select
+                      value={report.organizationId || ""}
+                      onChange={(event) => assignReport(report, "organizationId", event.target.value)}
+                    >
+                      <option value="">Bez grupe</option>
+                      {adminData.organizations.map((organization) => (
+                        <option key={organization.id} value={organization.id}>
+                          {organization.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Volonter
+                    <select
+                      value={report.assignedToId || ""}
+                      onChange={(event) => assignReport(report, "assignedToId", event.target.value)}
+                    >
+                      <option value="">Bez volontera</option>
+                      {volunteers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name || user.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </article>
             ))}
             {visibleReports.length === 0 ? (
@@ -282,6 +484,113 @@ export default function AdminPage() {
                 </li>
               ))}
             </ol>
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel__header">
+              <h3>Regije</h3>
+              <MapPinned size={18} />
+            </div>
+            <form className="stack-form" onSubmit={(event) => createAdminEntity(event, "region")}>
+              <input aria-label="Naziv regije" name="name" placeholder="Npr. Zagreb i okolica" />
+              <button className="button button--primary" type="submit">
+                <Plus size={18} />
+                Dodaj
+              </button>
+            </form>
+            <div className="compact-list">
+              {adminData.regions.map((region) => (
+                <span key={region.id}>{region.name}</span>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel__header">
+              <h3>Grupe i udruge</h3>
+              <Building2 size={18} />
+            </div>
+            <form className="stack-form" onSubmit={(event) => createAdminEntity(event, "organization")}>
+              <input aria-label="Naziv grupe" name="name" placeholder="Naziv grupe ili udruge" />
+              <select aria-label="Regija grupe" name="regionId" defaultValue="">
+                <option value="">Bez regije</option>
+                {adminData.regions.map((region) => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+              <div className="form-grid form-grid--compact">
+                <input aria-label="Grad" name="city" placeholder="Grad" />
+                <input aria-label="Telefon" name="phone" placeholder="Telefon" />
+              </div>
+              <input aria-label="Email grupe" name="email" placeholder="Email" type="email" />
+              <button className="button button--primary" type="submit">
+                <Plus size={18} />
+                Dodaj
+              </button>
+            </form>
+            <div className="compact-list">
+              {adminData.organizations.map((organization) => (
+                <span key={organization.id}>
+                  {organization.name}
+                  {organization.regionName ? ` - ${organization.regionName}` : ""}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel__header">
+              <h3>Korisnici i volonteri</h3>
+              <UserRoundPlus size={18} />
+            </div>
+            <form className="stack-form" onSubmit={(event) => createAdminEntity(event, "user")}>
+              <input aria-label="Ime korisnika" name="name" placeholder="Ime i prezime" />
+              <input aria-label="Email korisnika" name="email" placeholder="Email" type="email" />
+              <input aria-label="Telefon korisnika" name="phone" placeholder="Telefon" />
+              <div className="form-grid form-grid--compact">
+                <select aria-label="Uloga korisnika" name="role" defaultValue="VOLUNTEER">
+                  {userRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+                <select aria-label="Regija korisnika" name="regionId" defaultValue="">
+                  <option value="">Bez regije</option>
+                  {adminData.regions.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <select aria-label="Grupa korisnika" name="organizationId" defaultValue="">
+                <option value="">Bez grupe</option>
+                {adminData.organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+              <button className="button button--primary" type="submit">
+                <Plus size={18} />
+                Dodaj
+              </button>
+            </form>
+            <div className="compact-list">
+              {adminData.users.map((user) => (
+                <span key={user.id}>
+                  {user.name || user.email} - {user.role}
+                </span>
+              ))}
+            </div>
+            {adminFeedback ? (
+              <p className="admin-feedback" role="status">
+                {adminFeedback}
+              </p>
+            ) : null}
           </section>
 
           <section className="admin-panel">

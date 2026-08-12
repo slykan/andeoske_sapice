@@ -360,6 +360,10 @@ legend {
   margin-bottom: 18px;
 }
 
+.dashboard-tools--wide {
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+}
+
 .data-source {
   color: var(--muted);
   font-size: 0.92rem;
@@ -394,6 +398,33 @@ legend {
   gap: 10px;
   grid-template-columns: minmax(0, 1fr) auto;
   margin-top: 12px;
+}
+
+.stack-form {
+  display: grid;
+  gap: 10px;
+}
+
+.stack-form .button {
+  width: 100%;
+}
+
+.compact-list {
+  display: grid;
+  gap: 8px;
+  max-height: 190px;
+  overflow: auto;
+}
+
+.compact-list span {
+  background: #f0ebe1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding: 8px 10px;
 }
 
 .category-list {
@@ -456,6 +487,28 @@ legend {
   padding: 16px;
 }
 
+.report-card--ops {
+  align-items: start;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.1fr) auto minmax(150px, 0.7fr);
+}
+
+.report-card__summary,
+.report-card__place {
+  min-width: 0;
+}
+
+.report-card__place {
+  display: grid;
+  gap: 6px;
+}
+
+.report-card__place small {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .report-card p,
 .report-card span,
 .report-card small {
@@ -474,6 +527,18 @@ legend {
 }
 
 .status-control select {
+  min-height: 38px;
+  padding-block: 7px;
+}
+
+.assignment-grid {
+  display: grid;
+  gap: 10px;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+}
+
+.assignment-grid select {
   min-height: 38px;
   padding-block: 7px;
 }
@@ -655,6 +720,7 @@ legend {
   .form-grid,
   .checks,
   .dashboard-tools,
+  .assignment-grid,
   .admin-grid,
   .workspace--split,
   .features {
@@ -673,6 +739,10 @@ legend {
   }
 
   .category-form {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid--compact {
     grid-template-columns: 1fr;
   }
 
