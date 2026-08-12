@@ -9,15 +9,18 @@ import {
   FileText,
   HeartHandshake,
   MapPin,
+  Plus,
   ShieldCheck,
+  Trash2,
   UserRoundCheck,
 } from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const storageKey = "andeoske-sapice-reports";
 const apiPath = `${basePath}/api/reports.php`;
+const categoriesApiPath = `${basePath}/api/categories.php`;
 
-const categories = [
+const defaultCategories = [
   "Pas na lancu",
   "Bez vode/hrane",
   "Ozljeda ili bolest",
@@ -55,6 +58,10 @@ type ApiListResponse = {
 
 type ApiCreateResponse = {
   report: Report;
+};
+
+type ApiCategoriesResponse = {
+  categories: string[];
 };
 
 const initialReports: Report[] = [
@@ -119,6 +126,8 @@ export default function Home() {
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
   const [dataSource, setDataSource] = useState<"database" | "browser">("browser");
   const [isSaving, setIsSaving] = useState(false);
+  const [categories, setCategories] = useState(defaultCategories);
+  const [categoryFeedback, setCategoryFeedback] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -144,10 +153,29 @@ export default function Home() {
     }
 
     loadReports();
+    loadCategories();
 
     return () => {
       isMounted = false;
     };
+
+    async function loadCategories() {
+      try {
+        const response = await fetch(categoriesApiPath, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Categories API unavailable");
+        }
+
+        const data = (await response.json()) as ApiCategoriesResponse;
+        if (isMounted && Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories(data.categories);
+        }
+      } catch {
+        if (isMounted) {
+          setCategories(defaultCategories);
+        }
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -255,6 +283,59 @@ export default function Home() {
     setStatusFilter("Svi statusi");
     setUrgencyFilter("Sve hitnosti");
     setDataSource("browser");
+  }
+
+  async function addCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const name = String(data.get("categoryName") || "").trim();
+
+    if (!name) {
+      return;
+    }
+
+    try {
+      const response = await fetch(categoriesApiPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Category save failed");
+      }
+
+      setCategories((currentCategories) =>
+        Array.from(new Set([...currentCategories, name])).sort((a, b) => a.localeCompare(b, "hr")),
+      );
+      setCategoryFeedback(`Kategorija "${name}" je dodana.`);
+      form.reset();
+    } catch {
+      setCategoryFeedback("Kategorija nije spremljena. Provjeri API ili bazu.");
+    }
+  }
+
+  async function deleteCategory(name: string) {
+    try {
+      const response = await fetch(categoriesApiPath, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Category delete failed");
+      }
+
+      setCategories((currentCategories) =>
+        currentCategories.filter((category) => category !== name),
+      );
+      setCategoryFeedback(`Kategorija "${name}" je obrisana iz obrasca.`);
+    } catch {
+      setCategoryFeedback("Kategorija nije obrisana. Provjeri API ili bazu.");
+    }
   }
 
   return (
@@ -430,6 +511,41 @@ export default function Home() {
           <div className="data-source">
             {dataSource === "database" ? "Podaci se čitaju iz baze." : "Demo način: podaci su spremljeni samo u ovom browseru."}
           </div>
+          <section className="admin-panel" aria-labelledby="category-admin-title">
+            <div>
+              <h3 id="category-admin-title">Kategorije prijava</h3>
+              <form className="category-form" onSubmit={addCategory}>
+                <input
+                  aria-label="Naziv nove kategorije"
+                  name="categoryName"
+                  placeholder="Nova kategorija"
+                />
+                <button className="button button--primary" type="submit">
+                  <Plus size={18} />
+                  Dodaj
+                </button>
+              </form>
+            </div>
+            <div className="category-list">
+              {categories.map((category) => (
+                <span className="category-pill" key={category}>
+                  {category}
+                  <button
+                    aria-label={`Obriši kategoriju ${category}`}
+                    onClick={() => deleteCategory(category)}
+                    type="button"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {categoryFeedback ? (
+              <p className="admin-feedback" role="status">
+                {categoryFeedback}
+              </p>
+            ) : null}
+          </section>
           <div className="report-list">
             {visibleReports.map((report) => (
               <article className="report-card" key={report.id}>
