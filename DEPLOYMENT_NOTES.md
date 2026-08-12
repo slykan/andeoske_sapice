@@ -4,6 +4,17 @@
 
 Projekt se razvija lokalno, commita u git repozitorij, a VPS povlaci promjene i gradi aplikaciju preko `deploy.sh`.
 
+## VPS
+
+- Host: `vps.on-click.hr`
+- SSH port: `22`
+- SSH user: `andeoske`
+- Privremeni URL: `https://vps.on-click.hr/~andeoske/`
+- Predlozena putanja aplikacije: `/home/andeoske/andeoske_sapice`
+- Repo: `https://github.com/slykan/andeoske_sapice.git`
+
+Napomena: privremeni `~andeoske` URL najcesce posluzi za staticke datoteke iz `public_html`. Za punu Next.js aplikaciju s autentifikacijom, bazom i API rutama trebat ce Node.js runtime preko hosting panela, `pm2`/`systemd`, ili reverse proxy prema Node procesu.
+
 ## Predlozeni tok
 
 1. Lokalno:
@@ -27,7 +38,7 @@ Projekt se razvija lokalno, commita u git repozitorij, a VPS povlaci promjene i 
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="/var/www/andeoske-sapice"
+APP_DIR="/home/andeoske/andeoske_sapice"
 BRANCH="main"
 
 cd "$APP_DIR"
@@ -69,4 +80,3 @@ UPLOAD_STORAGE=
 ```
 
 Konkretni nazivi ovise o biblioteci koju izaberemo.
-

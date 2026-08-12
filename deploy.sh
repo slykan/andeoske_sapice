@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/var/www/andeoske-sapice}"
+APP_DIR="${APP_DIR:-/home/andeoske/andeoske_sapice}"
 BRANCH="${BRANCH:-main}"
 APP_NAME="${APP_NAME:-andeoske-sapice}"
 
@@ -25,4 +25,3 @@ if command -v pm2 >/dev/null 2>&1; then
 else
   echo "pm2 nije pronadjen. Dodaj restart komandu za systemd/Docker ili instaliraj pm2."
 fi
-
