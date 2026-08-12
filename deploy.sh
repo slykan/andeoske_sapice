@@ -30,7 +30,11 @@ npm ci
 
 if [ -f "prisma/schema.prisma" ]; then
   npx prisma generate
-  npx prisma migrate deploy
+  if [ "${RUN_DB_MIGRATIONS:-0}" = "1" ]; then
+    npx prisma migrate deploy
+  else
+    echo "Skipping database migrations. Set RUN_DB_MIGRATIONS=1 to apply them."
+  fi
 fi
 
 npm run build

@@ -58,6 +58,16 @@ DATABASE_URL="mysql://DB_USER:DB_PASSWORD@localhost:3306/DB_NAME"
 
 Nemoj slati lozinku u chat ako ne moras. Mozes je upisati direktno u `.env` na serveru kad dodjemo do backend faze.
 
+## Prisma migracije
+
+Deploy generira Prisma client kad postoji `prisma/schema.prisma`. Migracije se pokrecu samo kad je postavljeno:
+
+```bash
+RUN_DB_MIGRATIONS=1 bash deploy.sh
+```
+
+Database user iz `DATABASE_URL` mora imati pristup bazi i ovlasti za kreiranje tablica, indeksa i foreign keyeva.
+
 ## Node
 
 Provjeri na serveru:
@@ -72,4 +82,3 @@ Ako komande ne postoje, treba ukljuciti Node.js u panelu ili instalirati Node ru
 ## GitHub pristup na serveru
 
 Ako `git pull` trazi GitHub login, najjednostavnije je koristiti public HTTPS clone za read-only deploy. Ako repo postane private, treba dodati deploy key.
-
