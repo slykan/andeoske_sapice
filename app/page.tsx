@@ -52,6 +52,7 @@ export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
   const [savedReportId, setSavedReportId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [formStartedAt, setFormStartedAt] = useState(0);
 
   useEffect(() => {
     async function loadCategories() {
@@ -96,7 +97,11 @@ export default function Home() {
       const response = await fetch(apiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(report),
+        body: JSON.stringify({
+          ...report,
+          website: String(data.get("website") || ""),
+          formStartedAt: Number(data.get("formStartedAt") || formStartedAt),
+        }),
       });
 
       if (!response.ok) {
@@ -106,10 +111,17 @@ export default function Home() {
       const result = (await response.json()) as ApiCreateResponse;
       setSavedReportId(result.report.id);
       form.reset();
+      setFormStartedAt(Date.now());
     } catch {
       setSavedReportId("privremeno spremljena lokalno");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function markFormStarted() {
+    if (formStartedAt === 0) {
+      setFormStartedAt(Date.now());
     }
   }
 
@@ -169,7 +181,22 @@ export default function Home() {
           <span>Građanin</span>
           <h2>Nova prijava</h2>
         </div>
-        <form className="report-form" onSubmit={handleSubmit}>
+        <form
+          className="report-form"
+          onFocusCapture={markFormStarted}
+          onPointerDownCapture={markFormStarted}
+          onSubmit={handleSubmit}
+        >
+          <label className="hp-field" aria-hidden="true">
+            Web stranica
+            <input
+              autoComplete="off"
+              name="website"
+              tabIndex={-1}
+              type="text"
+            />
+          </label>
+          <input name="formStartedAt" type="hidden" value={formStartedAt} />
           <label>
             Kategorija
             <select defaultValue="Pas na lancu" name="category">

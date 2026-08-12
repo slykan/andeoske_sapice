@@ -222,6 +222,14 @@ h3 {
   padding: 24px;
 }
 
+.hp-field {
+  height: 0;
+  left: -10000px;
+  overflow: hidden;
+  position: absolute;
+  width: 0;
+}
+
 label,
 fieldset {
   color: var(--muted);

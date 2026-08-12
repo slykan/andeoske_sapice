@@ -117,6 +117,80 @@ function readJson(): array
     return $data;
 }
 
+function clientIp(): string
+{
+    $candidates = [
+        $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
+        $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
+        $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+    ];
+
+    foreach ($candidates as $candidate) {
+        $ip = trim(explode(',', (string) $candidate)[0]);
+        if ($ip !== '') {
+            return $ip;
+        }
+    }
+
+    return 'unknown';
+}
+
+function enforceRateLimit(): void
+{
+    $limit = 5;
+    $windowSeconds = 600;
+    $now = time();
+    $key = hash('sha256', clientIp());
+    $path = sys_get_temp_dir() . '/andeoske_rate_' . $key . '.json';
+    $handle = fopen($path, 'c+');
+
+    if ($handle === false) {
+        return;
+    }
+
+    flock($handle, LOCK_EX);
+    $contents = stream_get_contents($handle);
+    $attempts = json_decode($contents ?: '[]', true);
+    if (!is_array($attempts)) {
+        $attempts = [];
+    }
+
+    $attempts = array_values(array_filter(
+        array_map('intval', $attempts),
+        fn (int $timestamp): bool => $timestamp > ($now - $windowSeconds),
+    ));
+
+    if (count($attempts) >= $limit) {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+        respond(429, ['error' => 'Too many submissions. Please try again later.']);
+    }
+
+    $attempts[] = $now;
+    ftruncate($handle, 0);
+    rewind($handle);
+    fwrite($handle, json_encode($attempts));
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+}
+
+function validateSubmissionSecurity(array $data): void
+{
+    if (trim((string) ($data['website'] ?? '')) !== '') {
+        respond(204, []);
+    }
+
+    $startedAt = (int) ($data['formStartedAt'] ?? 0);
+    $elapsedMs = (int) round(microtime(true) * 1000) - $startedAt;
+
+    if ($startedAt <= 0 || $elapsedMs < 2500 || $elapsedMs > 7200000) {
+        respond(422, ['error' => 'Submission timing failed validation.']);
+    }
+
+    enforceRateLimit();
+}
+
 function startAdminSession(): void
 {
     session_name('andeoske_admin');
@@ -231,6 +305,8 @@ function listReports(PDO $db): void
 function createReport(PDO $db): void
 {
     $data = readJson();
+    validateSubmissionSecurity($data);
+
     $category = trim((string) ($data['category'] ?? ''));
     $place = trim((string) ($data['place'] ?? ''));
     $animal = trim((string) ($data['animal'] ?? ''));
@@ -241,6 +317,10 @@ function createReport(PDO $db): void
 
     if ($category === '' || $place === '' || $animal === '' || $description === '') {
         respond(422, ['error' => 'Missing required report fields.']);
+    }
+
+    if (strlen($category) > 120 || strlen($place) > 240 || strlen($animal) > 120 || strlen($description) > 5000) {
+        respond(422, ['error' => 'Report fields are too long.']);
     }
 
     $reportId = makeId('rep');
