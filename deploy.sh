@@ -44,11 +44,19 @@ if [ -d "out" ]; then
   mkdir -p "$PUBLIC_DIR"
   find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
   cp -a out/. "$PUBLIC_DIR"/
+  if [ -f "$PUBLIC_DIR/admin.html" ]; then
+    mkdir -p "$PUBLIC_DIR/admin"
+    cp "$PUBLIC_DIR/admin.html" "$PUBLIC_DIR/admin/index.html"
+  fi
 elif [ -d "dist" ]; then
   echo "Deploying dist build to $PUBLIC_DIR"
   mkdir -p "$PUBLIC_DIR"
   find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
   cp -a dist/. "$PUBLIC_DIR"/
+  if [ -f "$PUBLIC_DIR/admin.html" ]; then
+    mkdir -p "$PUBLIC_DIR/admin"
+    cp "$PUBLIC_DIR/admin.html" "$PUBLIC_DIR/admin/index.html"
+  fi
 else
   echo "Nije pronadjen staticki build folder: out/ ili dist/."
   echo "Ako aplikacija treba Node runtime, dodaj pm2/systemd restart umjesto kopiranja u public_html."
