@@ -4,7 +4,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/home/andeoske/andeoske_sapice}"
 PUBLIC_DIR="${PUBLIC_DIR:-/home/andeoske/public_html}"
 BRANCH="${BRANCH:-main}"
-NEXT_PUBLIC_BASE_PATH="${NEXT_PUBLIC_BASE_PATH:-/~andeoske}"
+NEXT_PUBLIC_BASE_PATH="${NEXT_PUBLIC_BASE_PATH:-}"
 export NEXT_PUBLIC_BASE_PATH
 
 cd "$APP_DIR"
