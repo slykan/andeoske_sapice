@@ -32,6 +32,7 @@ const statuses = [
 
 const urgencies = ["Visoka", "Srednja", "Niska"];
 const userRoles = ["VOLUNTEER", "ADMIN", "ORGANIZATION", "REPORTER"];
+type AdminView = "reports" | "users";
 
 type Report = {
   id: string;
@@ -199,6 +200,7 @@ export default function AdminPage() {
   const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [zoomedAttachment, setZoomedAttachment] = useState<ReportAttachment | null>(null);
+  const [adminView, setAdminView] = useState<AdminView>("reports");
   const [statusFilter, setStatusFilter] = useState("Svi statusi");
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
   const [regionFilter, setRegionFilter] = useState("Sve regije");
@@ -666,13 +668,27 @@ export default function AdminPage() {
           <a className="button button--quiet" href={`${basePath}/`}>
             Javna stranica
           </a>
+          <button
+            className={`button ${adminView === "reports" ? "button--primary" : "button--quiet"}`}
+            onClick={() => setAdminView("reports")}
+            type="button"
+          >
+            Prijave
+          </button>
+          <button
+            className={`button ${adminView === "users" ? "button--primary" : "button--quiet"}`}
+            onClick={() => setAdminView("users")}
+            type="button"
+          >
+            Korisnici
+          </button>
           <button className="button button--primary" onClick={logout} type="button">
             Odjava
           </button>
         </nav>
       </header>
 
-      <section className="admin-grid">
+      <section className={`admin-grid ${adminView === "users" ? "admin-grid--management" : ""}`}>
         <div className="admin-main">
           <div className="dashboard-tools dashboard-tools--wide">
             <label>

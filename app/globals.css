@@ -1045,6 +1045,29 @@ legend {
   gap: 18px;
 }
 
+.admin-grid:not(.admin-grid--management) .admin-side .admin-panel {
+  display: none;
+}
+
+.admin-grid--management {
+  grid-template-columns: 1fr;
+}
+
+.admin-grid--management .admin-main,
+.admin-grid--management .side-panel {
+  display: none;
+}
+
+.admin-grid--management .admin-side {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+}
+
+.admin-grid--management .admin-panel {
+  margin-bottom: 0;
+}
+
 @media (max-width: 820px) {
   .hero__content {
     gap: 12vh;
@@ -1074,6 +1097,15 @@ legend {
   .admin-topbar nav {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .admin-topbar nav,
+  .admin-topbar nav .button {
+    width: 100%;
+  }
+
+  .admin-grid--management .admin-side {
+    grid-template-columns: 1fr;
   }
 
   .report-card {
