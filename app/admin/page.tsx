@@ -41,6 +41,8 @@ type Report = {
   status: string;
   animal: string;
   description: string;
+  reporterEmail: string | null;
+  reporterPhone: string | null;
   flags: string[];
   anonymous: boolean;
   latitude: number | null;
@@ -719,6 +721,10 @@ export default function AdminPage() {
                 <div className="report-card__place">
                   <span>{report.place}</span>
                   <small>{report.description}</small>
+                  <div className="report-contact">
+                    <small>Email: {report.reporterEmail || "Nije upisano"}</small>
+                    <small>Telefon: {report.reporterPhone || "Nije upisano"}</small>
+                  </div>
                   {report.attachments.length > 0 ? (
                     <div className="attachment-grid">
                       {report.attachments.map((attachment) => (

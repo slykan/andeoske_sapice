@@ -308,6 +308,21 @@ function attachmentKind(string $mimeType): string
     return 'PHOTO';
 }
 
+function maskContact(?string $value): ?string
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return null;
+    }
+
+    $characters = preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY);
+    if (!$characters || count($characters) <= 2) {
+        return str_repeat('*', max(1, strlen($value)));
+    }
+
+    return $characters[0] . str_repeat('*', max(3, count($characters) - 2)) . $characters[count($characters) - 1];
+}
+
 function extensionForMime(string $mimeType): ?string
 {
     return match ($mimeType) {
@@ -436,6 +451,8 @@ function reportFromRow(array $row): array
         'status' => STATUS_FROM_DB[$row['status']] ?? 'Zaprimljeno',
         'animal' => $row['animalType'],
         'description' => $row['description'],
+        'reporterEmail' => (bool) $row['isAnonymous'] ? maskContact($row['reporterEmail']) : $row['reporterEmail'],
+        'reporterPhone' => (bool) $row['isAnonymous'] ? maskContact($row['reporterPhone']) : $row['reporterPhone'],
         'flags' => flagsFromRow($row),
         'anonymous' => (bool) $row['isAnonymous'],
         'regionId' => $row['regionId'],
@@ -458,6 +475,8 @@ function listReports(PDO $db): void
             r.`category`,
             r.`animalType`,
             r.`description`,
+            r.`reporterEmail`,
+            r.`reporterPhone`,
             r.`locationText`,
             r.`latitude`,
             r.`longitude`,
@@ -510,6 +529,8 @@ function listReports(PDO $db): void
             r.`category`,
             r.`animalType`,
             r.`description`,
+            r.`reporterEmail`,
+            r.`reporterPhone`,
             r.`locationText`,
             r.`latitude`,
             r.`longitude`,
@@ -588,6 +609,8 @@ function createReport(PDO $db): void
     $place = trim((string) ($data['place'] ?? ''));
     $animal = trim((string) ($data['animal'] ?? ''));
     $description = trim((string) ($data['description'] ?? ''));
+    $reporterEmail = trim((string) ($data['reporterEmail'] ?? ''));
+    $reporterPhone = trim((string) ($data['reporterPhone'] ?? ''));
     $urgency = URGENCY_TO_DB[(string) ($data['urgency'] ?? 'Srednja')] ?? 'MEDIUM';
     $anonymous = !empty($data['anonymous']);
     $latitude = coordinateFromData($data, 'latitude', -90, 90);
@@ -595,11 +618,15 @@ function createReport(PDO $db): void
     $flags = selectedFlags($data);
     $attachments = is_array($data['attachments'] ?? null) ? $data['attachments'] : [];
 
-    if ($category === '' || $place === '' || $animal === '' || $description === '') {
+    if ($category === '' || $place === '' || $animal === '' || $description === '' || $reporterEmail === '' || $reporterPhone === '') {
         respond(422, ['error' => 'Missing required report fields.']);
     }
 
-    if (strlen($category) > 120 || strlen($place) > 240 || strlen($animal) > 120 || strlen($description) > 5000) {
+    if (!filter_var($reporterEmail, FILTER_VALIDATE_EMAIL)) {
+        respond(422, ['error' => 'Valid email is required.']);
+    }
+
+    if (strlen($category) > 120 || strlen($place) > 240 || strlen($animal) > 120 || strlen($description) > 5000 || strlen($reporterEmail) > 190 || strlen($reporterPhone) > 80) {
         respond(422, ['error' => 'Report fields are too long.']);
     }
 
@@ -613,8 +640,8 @@ function createReport(PDO $db): void
 
         $statement = $db->prepare(
             'INSERT INTO `Report`
-             (`id`, `publicCode`, `category`, `animalType`, `description`, `locationText`, `latitude`, `longitude`, `urgency`, `status`, `isAnonymous`, `createdAt`, `updatedAt`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "RECEIVED", ?, ?, ?)'
+             (`id`, `publicCode`, `category`, `animalType`, `description`, `reporterEmail`, `reporterPhone`, `locationText`, `latitude`, `longitude`, `urgency`, `status`, `isAnonymous`, `createdAt`, `updatedAt`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "RECEIVED", ?, ?, ?)'
         );
         $statement->execute([
             $reportId,
@@ -622,6 +649,8 @@ function createReport(PDO $db): void
             $category,
             $animal,
             $description,
+            $reporterEmail,
+            $reporterPhone,
             $place,
             $latitude,
             $longitude,
@@ -689,6 +718,8 @@ function createReport(PDO $db): void
             'status' => 'Zaprimljeno',
             'animal' => $animal,
             'description' => $description,
+            'reporterEmail' => $anonymous ? maskContact($reporterEmail) : $reporterEmail,
+            'reporterPhone' => $anonymous ? maskContact($reporterPhone) : $reporterPhone,
             'flags' => $flags,
             'anonymous' => $anonymous,
         ],

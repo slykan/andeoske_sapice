@@ -42,6 +42,8 @@ type Report = {
   status: string;
   animal: string;
   description: string;
+  reporterEmail: string;
+  reporterPhone: string;
   flags: string[];
   anonymous: boolean;
 };
@@ -230,6 +232,8 @@ export default function Home() {
       status: "Zaprimljeno",
       animal: String(data.get("animal") || "Nije navedeno"),
       description: String(data.get("description") || ""),
+      reporterEmail: String(data.get("reporterEmail") || ""),
+      reporterPhone: String(data.get("reporterPhone") || ""),
       flags,
       anonymous: data.get("anonymous") === "on",
     };
@@ -392,6 +396,7 @@ export default function Home() {
             <select
               name="category"
               onChange={(event) => setSelectedCategory(event.target.value)}
+              required
               value={selectedCategory}
             >
               {categories.map((category) => (
@@ -446,11 +451,21 @@ export default function Home() {
             </label>
             <label>
               Hitnost
-              <select defaultValue="Visoka" name="urgency">
+              <select defaultValue="Visoka" name="urgency" required>
                 {urgencies.map((urgency) => (
                   <option key={urgency}>{urgency}</option>
                 ))}
               </select>
+            </label>
+          </div>
+          <div className="form-grid">
+            <label>
+              Email
+              <input name="reporterEmail" placeholder="ime@email.hr" required type="email" />
+            </label>
+            <label>
+              Kontakt telefon
+              <input name="reporterPhone" placeholder="+385..." required type="tel" />
             </label>
           </div>
           <div className="upload">
