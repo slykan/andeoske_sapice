@@ -535,6 +535,9 @@ export default function AdminPage() {
             {visibleReports.map((report) => (
               <article className="report-card report-card--ops" key={report.id}>
                 <div className="report-card__summary">
+                  <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>
+                    {report.urgency}
+                  </span>
                   <strong>{report.id}</strong>
                   <p>{report.category}</p>
                   <small>
@@ -586,9 +589,6 @@ export default function AdminPage() {
                     </div>
                   ) : null}
                 </div>
-                <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>
-                  {report.urgency}
-                </span>
                 <label className="status-control">
                   Status
                   <select

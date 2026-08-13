@@ -573,12 +573,18 @@ legend {
 
 .report-card--ops {
   align-items: start;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.1fr) auto minmax(150px, 0.7fr);
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.1fr) minmax(150px, 0.7fr);
 }
 
 .report-card__summary,
 .report-card__place {
   min-width: 0;
+}
+
+.report-card__summary {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
 }
 
 .report-card__place {
@@ -693,6 +699,7 @@ legend {
 
 .urgency {
   border-radius: 999px;
+  display: inline-flex;
   font-weight: 700;
   padding: 6px 10px;
 }
