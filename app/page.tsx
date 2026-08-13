@@ -616,7 +616,7 @@ export default function Home() {
                   : 0,
             },
             { label: "Broj volontera", value: publicStats.volunteers, fill: 72 },
-            { label: "U pripremi", value: "—", fill: 0 },
+            { label: "Donacije", value: "5+", fill: 100 },
           ].map((stat) => (
             <article className="public-stat" key={stat.label}>
               <span>{stat.label}</span>
