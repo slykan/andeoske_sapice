@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Building2,
   CheckCircle2,
+  ClipboardList,
   Edit3,
   Mail,
   MapPinned,
@@ -963,11 +964,11 @@ export default function AdminPage() {
             </div>
           </section>
 
-          <section className="admin-panel">
-            <div className="admin-panel__header">
+          <details className="admin-panel admin-panel--fold">
+            <summary className="admin-panel__header">
               <h3>Regije</h3>
               <MapPinned size={18} />
-            </div>
+            </summary>
             <form
               className="stack-form"
               key={editingRegion?.id || "new-region"}
@@ -1019,13 +1020,13 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
 
-          <section className="admin-panel">
-            <div className="admin-panel__header">
+          <details className="admin-panel admin-panel--fold">
+            <summary className="admin-panel__header">
               <h3>Grupe i udruge</h3>
               <Building2 size={18} />
-            </div>
+            </summary>
             <form
               className="stack-form"
               key={editingOrganization?.id || "new-organization"}
@@ -1108,13 +1109,13 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
 
-          <section className="admin-panel">
-            <div className="admin-panel__header">
+          <details className="admin-panel admin-panel--fold">
+            <summary className="admin-panel__header">
               <h3>Korisnici i volonteri</h3>
               <UserRoundPlus size={18} />
-            </div>
+            </summary>
             <form
               className="stack-form"
               key={editingUser?.id || "new-user"}
@@ -1219,9 +1220,13 @@ export default function AdminPage() {
                 {adminFeedback}
               </p>
             ) : null}
-          </section>
+          </details>
 
-          <section className="admin-panel">
+          <details className="admin-panel admin-panel--fold">
+            <summary className="admin-panel__header">
+              <h3>Kategorije i podkategorije</h3>
+              <ClipboardList size={18} />
+            </summary>
             <h3>Kategorije prijava</h3>
             <form className="category-form" onSubmit={addCategory}>
               <input
@@ -1299,7 +1304,7 @@ export default function AdminPage() {
                 {categoryFeedback}
               </p>
             ) : null}
-          </section>
+          </details>
         </aside>
       </section>
 
