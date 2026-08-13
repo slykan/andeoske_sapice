@@ -101,6 +101,21 @@ function mapEmbedUrl(latitude: number, longitude: number) {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${latitude}%2C${longitude}`;
 }
 
+function normalizeReports(reports: Report[]): Report[] {
+  return reports.map((report) => ({
+    ...report,
+    attachments: Array.isArray(report.attachments)
+      ? report.attachments.filter(
+          (attachment) =>
+            attachment &&
+            typeof attachment.url === "string" &&
+            typeof attachment.mimeType === "string" &&
+            typeof attachment.fileName === "string",
+        )
+      : [],
+  }));
+}
+
 export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -154,7 +169,7 @@ export default function AdminPage() {
     }
 
     const data = (await response.json()) as { reports: Report[] };
-    setReports(Array.isArray(data.reports) ? data.reports : []);
+    setReports(Array.isArray(data.reports) ? normalizeReports(data.reports) : []);
   }
 
   async function loadCategories() {

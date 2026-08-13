@@ -412,6 +412,19 @@ function subcategoryIds(PDO $db, string $category, array $flags): array
 
 function reportFromRow(array $row): array
 {
+    $attachments = $row['attachments'] ? json_decode((string) $row['attachments'], true) : [];
+    if (!is_array($attachments)) {
+        $attachments = [];
+    }
+
+    $attachments = array_values(array_filter(
+        $attachments,
+        fn ($attachment): bool => is_array($attachment)
+            && !empty($attachment['url'])
+            && !empty($attachment['mimeType'])
+            && !empty($attachment['fileName']),
+    ));
+
     return [
         'id' => $row['publicCode'],
         'dbId' => $row['reportId'],
@@ -431,7 +444,7 @@ function reportFromRow(array $row): array
         'assignedToName' => $row['assignedToName'],
         'organizationId' => $row['organizationId'],
         'organizationName' => $row['organizationName'],
-        'attachments' => $row['attachments'] ? json_decode((string) $row['attachments'], true) : [],
+        'attachments' => $attachments,
     ];
 }
 
@@ -461,11 +474,15 @@ function listReports(PDO $db): void
                 "[",
                 COALESCE(
                     GROUP_CONCAT(
-                        DISTINCT JSON_OBJECT(
-                            "url", CONCAT("/", a.`storageKey`),
-                            "fileName", a.`fileName`,
-                            "mimeType", a.`mimeType`,
-                            "kind", a.`kind`
+                        DISTINCT IF(
+                            a.`id` IS NULL,
+                            NULL,
+                            JSON_OBJECT(
+                                "url", CONCAT("/", a.`storageKey`),
+                                "fileName", a.`fileName`,
+                                "mimeType", a.`mimeType`,
+                                "kind", a.`kind`
+                            )
                         )
                         ORDER BY a.`createdAt`
                         SEPARATOR ","
