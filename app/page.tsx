@@ -65,7 +65,10 @@ export default function Home() {
   const [subcategories, setSubcategories] =
     useState<Record<string, string[]>>(defaultSubcategories);
   const [selectedCategory, setSelectedCategory] = useState("Pas na lancu");
-  const [savedReportId, setSavedReportId] = useState("");
+  const [formFeedback, setFormFeedback] = useState<{ message: string; type: "success" | "error" } | null>(
+    null,
+  );
+  const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationFeedback, setLocationFeedback] = useState("");
@@ -74,11 +77,9 @@ export default function Home() {
   );
   const [formStartedAt, setFormStartedAt] = useState(0);
 
-  async function readUploads(files: FileList | null): Promise<ReportUpload[]> {
-    const selectedFiles = Array.from(files || []).slice(0, 6);
-
+  async function readUploads(files: File[]): Promise<ReportUpload[]> {
     return Promise.all(
-      selectedFiles.map(
+      files.map(
         (file) =>
           new Promise<ReportUpload>((resolve, reject) => {
             const reader = new FileReader();
@@ -94,6 +95,12 @@ export default function Home() {
           }),
       ),
     );
+  }
+
+  function handleAttachmentChange(files: FileList | null) {
+    const selectedFiles = Array.from(files || []).slice(0, 6);
+    setSelectedAttachments(selectedFiles);
+    setFormFeedback(null);
   }
 
   useEffect(() => {
@@ -126,7 +133,17 @@ export default function Home() {
     const form = event.currentTarget;
     const data = new FormData(form);
     const flags = data.getAll("flags").map(String);
-    const uploads = await readUploads(form.querySelector<HTMLInputElement>('input[name="attachments"]')?.files || null);
+    const oversizedAttachment = selectedAttachments.find((file) => file.size > 8 * 1024 * 1024);
+
+    if (oversizedAttachment) {
+      setFormFeedback({
+        message: `Privitak "${oversizedAttachment.name}" je veći od 8 MB.`,
+        type: "error",
+      });
+      return;
+    }
+
+    const uploads = await readUploads(selectedAttachments);
     const report: Report = {
       id: "",
       category: String(data.get("category") || "Pas na lancu"),
@@ -160,14 +177,21 @@ export default function Home() {
       }
 
       const result = (await response.json()) as ApiCreateResponse;
-      setSavedReportId(result.report.id);
+      setFormFeedback({
+        message: `Prijava ${result.report.id} je zaprimljena.`,
+        type: "success",
+      });
       form.reset();
       setSelectedCategory(categories[0] || "Pas na lancu");
+      setSelectedAttachments([]);
       setCoordinates(null);
       setLocationFeedback("");
       setFormStartedAt(Date.now());
     } catch {
-      setSavedReportId("privremeno spremljena lokalno");
+      setFormFeedback({
+        message: "Prijava nije spremljena. Provjeri podatke i pokušaj ponovno.",
+        type: "error",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -362,16 +386,30 @@ export default function Home() {
               aria-label="Dodaj fotografije ili video"
               multiple
               name="attachments"
+              onChange={(event) => handleAttachmentChange(event.target.files)}
               type="file"
             />
           </div>
+          {selectedAttachments.length > 0 ? (
+            <div className="upload-list">
+              <strong>Odabrani privitci</strong>
+              <ol>
+                {selectedAttachments.map((file) => (
+                  <li key={`${file.name}-${file.size}`}>
+                    <span>{file.name}</span>
+                    <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
           <label className="checkbox-line">
             <input name="anonymous" type="checkbox" />
             Želim podnijeti anonimnu prijavu
           </label>
-          {savedReportId ? (
-            <p className="form-feedback" role="status">
-              Prijava {savedReportId} je zaprimljena.
+          {formFeedback ? (
+            <p className={`form-feedback form-feedback--${formFeedback.type}`} role="status">
+              {formFeedback.message}
             </p>
           ) : null}
           <button className="button button--primary" disabled={isSaving} type="submit">

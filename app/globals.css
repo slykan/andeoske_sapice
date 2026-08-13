@@ -365,6 +365,41 @@ legend {
   max-width: 260px;
 }
 
+.upload-list {
+  background: #fbfaf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.upload-list strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.upload-list ol {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.upload-list li {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.upload-list span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .form-feedback {
   background: #edf7ef;
   border: 1px solid #b8d8bf;
@@ -373,6 +408,12 @@ legend {
   font-weight: 700;
   line-height: 1.45;
   padding: 12px 14px;
+}
+
+.form-feedback--error {
+  background: #f8ded7;
+  border-color: #e6a99b;
+  color: #8c321f;
 }
 
 .workspace--split {
