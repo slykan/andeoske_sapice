@@ -42,7 +42,8 @@ npm run build
 if [ -d "out" ]; then
   echo "Deploying static export to $PUBLIC_DIR"
   mkdir -p "$PUBLIC_DIR"
-  find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  mkdir -p "$PUBLIC_DIR/uploads"
+  find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 ! -name uploads -exec rm -rf {} +
   cp -a out/. "$PUBLIC_DIR"/
   if [ -f "$PUBLIC_DIR/admin.html" ]; then
     mkdir -p "$PUBLIC_DIR/admin"
@@ -51,7 +52,8 @@ if [ -d "out" ]; then
 elif [ -d "dist" ]; then
   echo "Deploying dist build to $PUBLIC_DIR"
   mkdir -p "$PUBLIC_DIR"
-  find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  mkdir -p "$PUBLIC_DIR/uploads"
+  find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 ! -name uploads -exec rm -rf {} +
   cp -a dist/. "$PUBLIC_DIR"/
   if [ -f "$PUBLIC_DIR/admin.html" ]; then
     mkdir -p "$PUBLIC_DIR/admin"

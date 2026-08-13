@@ -44,6 +44,13 @@ type Report = {
   anonymous: boolean;
 };
 
+type ReportUpload = {
+  dataUrl: string;
+  fileName: string;
+  mimeType: string;
+  byteSize: number;
+};
+
 type ApiCreateResponse = {
   report: Report;
 };
@@ -66,6 +73,28 @@ export default function Home() {
     null,
   );
   const [formStartedAt, setFormStartedAt] = useState(0);
+
+  async function readUploads(files: FileList | null): Promise<ReportUpload[]> {
+    const selectedFiles = Array.from(files || []).slice(0, 6);
+
+    return Promise.all(
+      selectedFiles.map(
+        (file) =>
+          new Promise<ReportUpload>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve({
+                dataUrl: String(reader.result || ""),
+                fileName: file.name,
+                mimeType: file.type || "application/octet-stream",
+                byteSize: file.size,
+              });
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          }),
+      ),
+    );
+  }
 
   useEffect(() => {
     async function loadCategories() {
@@ -97,6 +126,7 @@ export default function Home() {
     const form = event.currentTarget;
     const data = new FormData(form);
     const flags = data.getAll("flags").map(String);
+    const uploads = await readUploads(form.querySelector<HTMLInputElement>('input[name="attachments"]')?.files || null);
     const report: Report = {
       id: "",
       category: String(data.get("category") || "Pas na lancu"),
@@ -119,6 +149,7 @@ export default function Home() {
           ...report,
           latitude: coordinates?.latitude ?? null,
           longitude: coordinates?.longitude ?? null,
+          attachments: uploads,
           website: String(data.get("website") || ""),
           formStartedAt: Number(data.get("formStartedAt") || formStartedAt),
         }),
@@ -326,7 +357,13 @@ export default function Home() {
               <strong>Fotografije i video</strong>
               <p>Privitci će biti privatni i dostupni samo ovlaštenima.</p>
             </div>
-            <input aria-label="Dodaj fotografije ili video" multiple type="file" />
+            <input
+              accept="image/*,video/*"
+              aria-label="Dodaj fotografije ili video"
+              multiple
+              name="attachments"
+              type="file"
+            />
           </div>
           <label className="checkbox-line">
             <input name="anonymous" type="checkbox" />

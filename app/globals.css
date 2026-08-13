@@ -593,6 +593,34 @@ legend {
   overflow: hidden;
 }
 
+.attachment-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 8px;
+}
+
+.attachment-thumb {
+  align-items: center;
+  aspect-ratio: 1;
+  background: #f0ebe1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 800;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.attachment-thumb img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
 .map-preview {
   border: 1px solid var(--line);
   border-radius: 8px;

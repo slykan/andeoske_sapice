@@ -39,6 +39,14 @@ type Report = {
   assignedToName: string | null;
   organizationId: string | null;
   organizationName: string | null;
+  attachments: ReportAttachment[];
+};
+
+type ReportAttachment = {
+  url: string;
+  fileName: string;
+  mimeType: string;
+  kind: string;
 };
 
 type Region = {
@@ -538,6 +546,27 @@ export default function AdminPage() {
                 <div className="report-card__place">
                   <span>{report.place}</span>
                   <small>{report.description}</small>
+                  {report.attachments.length > 0 ? (
+                    <div className="attachment-grid">
+                      {report.attachments.map((attachment) => (
+                        <a
+                          className="attachment-thumb"
+                          href={attachment.url}
+                          key={`${report.id}-${attachment.url}`}
+                          rel="noreferrer"
+                          target="_blank"
+                          title={attachment.fileName}
+                        >
+                          {attachment.mimeType.startsWith("image/") ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img alt={attachment.fileName} src={attachment.url} />
+                          ) : (
+                            <span>{attachment.kind === "VIDEO" ? "Video" : "Privitak"}</span>
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
                   {report.latitude !== null && report.longitude !== null ? (
                     <div className="map-preview">
                       <iframe

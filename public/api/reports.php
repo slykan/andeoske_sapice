@@ -299,6 +299,95 @@ function selectedFlags(array $data): array
     return array_values(array_unique($flags));
 }
 
+function attachmentKind(string $mimeType): string
+{
+    if (strpos($mimeType, 'video/') === 0) {
+        return 'VIDEO';
+    }
+
+    return 'PHOTO';
+}
+
+function extensionForMime(string $mimeType): ?string
+{
+    return match ($mimeType) {
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+        'video/mp4' => 'mp4',
+        'video/webm' => 'webm',
+        'video/quicktime' => 'mov',
+        default => null,
+    };
+}
+
+function saveAttachments(PDO $db, string $reportId, array $attachments, string $now): void
+{
+    $attachments = array_slice($attachments, 0, 6);
+    if (!$attachments) {
+        return;
+    }
+
+    $directory = __DIR__ . '/../uploads/reports';
+    if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+        respond(500, ['error' => 'Could not prepare upload directory.']);
+    }
+
+    foreach ($attachments as $attachment) {
+        if (!is_array($attachment)) {
+            continue;
+        }
+
+        $dataUrl = (string) ($attachment['dataUrl'] ?? '');
+        $fileName = trim((string) ($attachment['fileName'] ?? 'privitak'));
+        $mimeType = trim((string) ($attachment['mimeType'] ?? ''));
+        $byteSize = (int) ($attachment['byteSize'] ?? 0);
+        $extension = extensionForMime($mimeType);
+
+        if ($extension === null || $byteSize <= 0 || $byteSize > 8 * 1024 * 1024) {
+            respond(422, ['error' => 'Attachment type or size is not allowed.']);
+        }
+
+        if (!preg_match('/^data:([^;]+);base64,(.+)$/', $dataUrl, $matches)) {
+            respond(422, ['error' => 'Invalid attachment data.']);
+        }
+
+        if ($matches[1] !== $mimeType) {
+            respond(422, ['error' => 'Attachment MIME mismatch.']);
+        }
+
+        $binary = base64_decode($matches[2], true);
+        if ($binary === false || strlen($binary) !== $byteSize) {
+            respond(422, ['error' => 'Attachment data is corrupted.']);
+        }
+
+        $storageName = makeId('att') . '.' . $extension;
+        $storageKey = 'uploads/reports/' . $storageName;
+        $targetPath = $directory . '/' . $storageName;
+
+        if (file_put_contents($targetPath, $binary, LOCK_EX) === false) {
+            respond(500, ['error' => 'Could not save attachment.']);
+        }
+
+        $statement = $db->prepare(
+            'INSERT INTO `ReportAttachment`
+             (`id`, `reportId`, `kind`, `fileName`, `storageKey`, `mimeType`, `byteSize`, `exifStripped`, `createdAt`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)'
+        );
+        $statement->execute([
+            makeId('file'),
+            $reportId,
+            attachmentKind($mimeType),
+            mb_substr($fileName, 0, 180),
+            $storageKey,
+            $mimeType,
+            $byteSize,
+            $now,
+        ]);
+    }
+}
+
 function subcategoryIds(PDO $db, string $category, array $flags): array
 {
     if (!$flags) {
@@ -342,6 +431,7 @@ function reportFromRow(array $row): array
         'assignedToName' => $row['assignedToName'],
         'organizationId' => $row['organizationId'],
         'organizationName' => $row['organizationName'],
+        'attachments' => $row['attachments'] ? json_decode((string) $row['attachments'], true) : [],
     ];
 }
 
@@ -367,6 +457,23 @@ function listReports(PDO $db): void
             assignee.`name` AS `assignedToName`,
             org.`name` AS `organizationName`,
             GROUP_CONCAT(DISTINCT rf.`label` ORDER BY rf.`label` SEPARATOR "||") AS `reportFlags`,
+            CONCAT(
+                "[",
+                COALESCE(
+                    GROUP_CONCAT(
+                        DISTINCT JSON_OBJECT(
+                            "url", CONCAT("/", a.`storageKey`),
+                            "fileName", a.`fileName`,
+                            "mimeType", a.`mimeType`,
+                            "kind", a.`kind`
+                        )
+                        ORDER BY a.`createdAt`
+                        SEPARATOR ","
+                    ),
+                    ""
+                ),
+                "]"
+            ) AS `attachments`,
             c.`hasWater`,
             c.`hasFood`,
             c.`hasShelter`,
@@ -377,6 +484,7 @@ function listReports(PDO $db): void
          LEFT JOIN `User` assignee ON assignee.`id` = r.`assignedToId`
          LEFT JOIN `Organization` org ON org.`id` = r.`organizationId`
          LEFT JOIN `ReportFlag` rf ON rf.`reportId` = r.`id`
+         LEFT JOIN `ReportAttachment` a ON a.`reportId` = r.`id`
          LEFT JOIN `ChainDetails` c ON c.`reportId` = r.`id`
          GROUP BY
             r.`id`,
@@ -427,6 +535,7 @@ function createReport(PDO $db): void
     $latitude = coordinateFromData($data, 'latitude', -90, 90);
     $longitude = coordinateFromData($data, 'longitude', -180, 180);
     $flags = selectedFlags($data);
+    $attachments = is_array($data['attachments'] ?? null) ? $data['attachments'] : [];
 
     if ($category === '' || $place === '' || $animal === '' || $description === '') {
         respond(422, ['error' => 'Missing required report fields.']);
@@ -478,6 +587,8 @@ function createReport(PDO $db): void
                 $now,
             ]);
         }
+
+        saveAttachments($db, $reportId, $attachments, $now);
 
         if ($category === 'Pas na lancu') {
             $statement = $db->prepare(
