@@ -365,6 +365,20 @@ legend {
   max-width: 260px;
 }
 
+.upload--left,
+.upload-list--left {
+  max-width: 560px;
+}
+
+.upload--left input {
+  margin-left: 0;
+}
+
+.upload--legacy,
+.upload--legacy + .upload-list {
+  display: none;
+}
+
 .upload-list {
   background: #fbfaf7;
   border: 1px solid var(--line);

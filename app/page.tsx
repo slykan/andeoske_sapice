@@ -444,6 +444,34 @@ export default function Home() {
               required
             />
           </label>
+          <div className="upload upload--left">
+            <Camera />
+            <div>
+              <strong>Fotografije i video</strong>
+              <p>Privitci Ä‡e biti privatni i dostupni samo ovlaĹˇtenima.</p>
+            </div>
+            <input
+              accept="image/*,video/*"
+              aria-label="Dodaj fotografije ili video"
+              multiple
+              name="attachments"
+              onChange={(event) => handleAttachmentChange(event.target.files)}
+              type="file"
+            />
+          </div>
+          {selectedAttachments.length > 0 ? (
+            <div className="upload-list upload-list--left">
+              <strong>Odabrani privitci</strong>
+              <ol>
+                {selectedAttachments.map((file) => (
+                  <li key={`${file.name}-${file.size}`}>
+                    <span>{file.name}</span>
+                    <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
           <div className="form-grid">
             <label>
               Vrsta životinje
@@ -468,7 +496,7 @@ export default function Home() {
               <input name="reporterPhone" placeholder="+385..." required type="tel" />
             </label>
           </div>
-          <div className="upload">
+          <div className="upload upload--legacy">
             <Camera />
             <div>
               <strong>Fotografije i video</strong>
