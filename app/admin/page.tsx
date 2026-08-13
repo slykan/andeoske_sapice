@@ -1103,31 +1103,34 @@ export default function AdminPage() {
                 </div>
                 <div className="report-actions">
                   <button
-                    className={`button ${report.assignedToId ? "button--success" : "button--quiet"}`}
+                    className={`button button--notify ${report.assignedToId ? "button--success" : "button--quiet"}`}
                     disabled={hasReportChanges || !report.assignedToId}
                     onClick={() => notifyVolunteer(report)}
+                    title="Pošalji obavijest volonteru"
                     type="button"
                   >
                     <Mail size={16} />
-                    Pošalji obavijest volonteru
+                    Volonter
                   </button>
                   <button
-                    className="button button--quiet"
+                    className={`button button--notify ${report.regionId ? "button--success" : "button--quiet"}`}
                     disabled={hasReportChanges || !report.regionId}
                     onClick={() => notifyRegion(report)}
+                    title="Pošalji obavijest na regiju"
                     type="button"
                   >
                     <Mail size={16} />
-                    Pošalji obavijest na regiju
+                    Regija
                   </button>
                   <button
-                    className="button button--quiet"
+                    className={`button button--notify ${report.organizationId ? "button--success" : "button--quiet"}`}
                     disabled={hasReportChanges || !report.organizationId}
                     onClick={() => notifyGroup(report)}
+                    title="Pošalji obavijest na grupu"
                     type="button"
                   >
                     <Mail size={16} />
-                    Pošalji obavijest na grupu
+                    Grupa
                   </button>
                   <div className="report-actions__save">
                     {reportFeedback[report.id] ? (
