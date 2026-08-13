@@ -1322,6 +1322,39 @@ legend {
   margin-top: 8px;
 }
 
+.about-lead {
+  color: var(--muted);
+  font-size: 1.08rem;
+  line-height: 1.65;
+  margin: 18px 0 32px;
+  max-width: 760px;
+}
+
+.about-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.about-grid article {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-height: 180px;
+  padding: 20px;
+}
+
+.about-grid svg {
+  color: var(--blue);
+  margin-bottom: 18px;
+}
+
+.about-grid p {
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
 .admin-shell {
   margin: 0 auto;
   max-width: 1320px;
@@ -1453,7 +1486,8 @@ legend {
   .assignment-grid,
   .admin-grid,
   .workspace--split,
-  .features {
+  .features,
+  .about-grid {
     grid-template-columns: 1fr;
   }
 

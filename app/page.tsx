@@ -11,6 +11,7 @@ import {
   MapPin,
   ShieldCheck,
   UserRoundCheck,
+  UserRoundPlus,
 } from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -70,6 +71,7 @@ type PublicStats = {
   totalReports: number;
   resolvedReports: number;
   volunteers: number;
+  organizations: number;
 };
 
 function extensionlessName(fileName: string) {
@@ -166,6 +168,7 @@ export default function Home() {
     totalReports: 0,
     resolvedReports: 0,
     volunteers: 0,
+    organizations: 0,
   });
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -224,9 +227,10 @@ export default function Home() {
           totalReports: Number(data.stats?.totalReports || 0),
           resolvedReports: Number(data.stats?.resolvedReports || 0),
           volunteers: Number(data.stats?.volunteers || 0),
+          organizations: Number(data.stats?.organizations || 0),
         });
       } catch {
-        setPublicStats({ totalReports: 0, resolvedReports: 0, volunteers: 0 });
+        setPublicStats({ totalReports: 0, resolvedReports: 0, volunteers: 0, organizations: 0 });
       }
     }
 
@@ -614,8 +618,8 @@ export default function Home() {
                   ? Math.round((publicStats.resolvedReports / publicStats.totalReports) * 100)
                   : 0,
             },
+            { label: "Broj organizacija", value: publicStats.organizations, fill: 85 },
             { label: "Broj volontera", value: publicStats.volunteers, fill: 72 },
-            { label: "Donacije", value: "5+", fill: 100 },
           ].map((stat) => (
             <article className="public-stat" key={stat.label}>
               <span>{stat.label}</span>
@@ -625,6 +629,49 @@ export default function Home() {
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="band" id="o-nama">
+        <div className="section-heading">
+          <span>Tko smo</span>
+          <h2>Sustav koji povezuje ljude i životinje kojima je pomoć najpotrebnija</h2>
+        </div>
+        <p className="about-lead">
+          Anđeoske šapice nisu samo obrazac za prijavu - to je sustav osnovan s ciljem da
+          okupi građane, volontere, udruge i nadležne institucije na jednom mjestu i
+          organizira brzo, transparentno rješavanje svakog slučaja zanemarene, zlostavljane
+          ili napuštene životinje. Vjerujemo da nijedna životinja ne bi smjela ostati bez
+          pomoći samo zato što nitko nije znao kome se obratiti ili što učiniti. Zato smo
+          izgradili jasan tok: od prijave, preko provjere i dodjele volonteru ili udruzi, do
+          konačnog rješenja slučaja - uz praćenje svakog koraka.
+        </p>
+        <div className="about-grid">
+          <article>
+            <HeartHandshake />
+            <h3>Naša misija</h3>
+            <p>
+              Okupljamo ljude dobre volje i pretvaramo dobru namjeru u konkretnu, praćenu
+              akciju - svaka prijava dobiva odgovornu osobu i jasan sljedeći korak.
+            </p>
+          </article>
+          <article>
+            <MapPin />
+            <h3>Cijela Hrvatska</h3>
+            <p>
+              Cilj nam je izgraditi mrežu volontera i udruga u svakoj regiji Republike
+              Hrvatske, kako nijedan kraj zemlje ne bi ostao bez brze i organizirane pomoći.
+            </p>
+          </article>
+          <article>
+            <UserRoundPlus />
+            <h3>Otvoreni za suradnju</h3>
+            <p>
+              Sustav je otvoren za nove udruge, organizacije i volontere iz svih dijelova
+              Hrvatske. Ako želite pridružiti se i pomoći organizirati zaštitu životinja u
+              svojoj regiji, javite nam se.
+            </p>
+          </article>
         </div>
       </section>
 

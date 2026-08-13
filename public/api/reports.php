@@ -685,12 +685,16 @@ function publicStats(PDO $db): void
     $volunteers = (int) $db->query(
         'SELECT COUNT(*) FROM `User` WHERE `isActive` = 1 AND `role` IN ("VOLUNTEER", "ADMIN")'
     )->fetchColumn();
+    $organizations = (int) $db->query(
+        'SELECT COUNT(*) FROM `Organization` WHERE `isActive` = 1'
+    )->fetchColumn();
 
     respond(200, [
         'stats' => [
             'totalReports' => $totalReports,
             'resolvedReports' => $resolvedReports,
             'volunteers' => $volunteers,
+            'organizations' => $organizations,
         ],
     ]);
 }
