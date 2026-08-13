@@ -58,6 +58,11 @@ function pdo(): PDO
     ]);
 }
 
+function makeId(string $prefix): string
+{
+    return $prefix . '_' . bin2hex(random_bytes(12));
+}
+
 function renderPage(string $title, string $message): void
 {
     header('Content-Type: text/html; charset=utf-8');
@@ -96,8 +101,12 @@ $responseStatus = [
     'accept' => 'ACCEPTED',
     'decline' => 'DECLINED',
 ][$action] ?? null;
+$nextReportStatus = [
+    'accept' => 'IN_PROGRESS',
+    'decline' => 'RECEIVED',
+][$action] ?? null;
 
-if ($token === '' || !preg_match('/^[a-f0-9]{48}$/', $token) || $responseStatus === null) {
+if ($token === '' || !preg_match('/^[a-f0-9]{48}$/', $token) || $responseStatus === null || $nextReportStatus === null) {
     http_response_code(400);
     renderPage('Neispravan link', 'Link za odgovor nije ispravan.');
     exit;
@@ -105,27 +114,85 @@ if ($token === '' || !preg_match('/^[a-f0-9]{48}$/', $token) || $responseStatus 
 
 try {
     $db = pdo();
+    $db->beginTransaction();
+
+    $statement = $db->prepare(
+        'SELECT
+            n.`id` AS `notificationId`,
+            n.`reportId`,
+            n.`recipientName`,
+            r.`status` AS `currentStatus`
+         FROM `ReportNotification` n
+         INNER JOIN `Report` r ON r.`id` = n.`reportId`
+         WHERE n.`responseToken` = ?
+         LIMIT 1
+         FOR UPDATE'
+    );
+    $statement->execute([$token]);
+    $notification = $statement->fetch();
+
+    if (!$notification) {
+        $db->rollBack();
+        http_response_code(404);
+        renderPage('Link nije pronaden', 'Ovaj link za odgovor nije pronaden.');
+        exit;
+    }
+
+    $now = date('Y-m-d H:i:s');
     $statement = $db->prepare(
         'UPDATE `ReportNotification`
          SET `responseStatus` = ?, `respondedAt` = ?
-         WHERE `responseToken` = ?'
+         WHERE `id` = ?'
     );
-    $statement->execute([$responseStatus, date('Y-m-d H:i:s'), $token]);
+    $statement->execute([$responseStatus, $now, $notification['notificationId']]);
 
-    if ($statement->rowCount() === 0) {
-        http_response_code(404);
-        renderPage('Link nije pronađen', 'Ovaj link za odgovor nije pronađen.');
-        exit;
+    if ($responseStatus === 'ACCEPTED') {
+        $statement = $db->prepare(
+            'UPDATE `Report`
+             SET `status` = "IN_PROGRESS", `updatedAt` = ?, `closedAt` = NULL
+             WHERE `id` = ?'
+        );
+        $statement->execute([$now, $notification['reportId']]);
+        $note = 'Volonter ' . $notification['recipientName'] . ' prihvatio je prijavu iz email obavijesti.';
+    } else {
+        $statement = $db->prepare(
+            'UPDATE `Report`
+             SET `status` = "RECEIVED", `assignedToId` = NULL, `updatedAt` = ?, `closedAt` = NULL
+             WHERE `id` = ?'
+        );
+        $statement->execute([$now, $notification['reportId']]);
+        $note = 'Volonter ' . $notification['recipientName'] . ' odbio je prijavu iz email obavijesti.';
     }
+
+    if ($notification['currentStatus'] !== $nextReportStatus) {
+        $statement = $db->prepare(
+            'INSERT INTO `ReportStatusHistory`
+             (`id`, `reportId`, `fromStatus`, `toStatus`, `action`, `note`, `createdAt`)
+             VALUES (?, ?, ?, ?, "STATUS_CHANGED", ?, ?)'
+        );
+        $statement->execute([
+            makeId('hist'),
+            $notification['reportId'],
+            $notification['currentStatus'],
+            $nextReportStatus,
+            $note,
+            $now,
+        ]);
+    }
+
+    $db->commit();
 } catch (Throwable) {
+    if (isset($db) && $db instanceof PDO && $db->inTransaction()) {
+        $db->rollBack();
+    }
     http_response_code(500);
-    renderPage('Greška', 'Odgovor trenutno nije moguće spremiti.');
+    renderPage('Greska', 'Odgovor trenutno nije moguce spremiti.');
     exit;
 }
 
 if ($responseStatus === 'ACCEPTED') {
-    renderPage('Prijava prihvaćena', 'Hvala, tvoj odgovor je spremljen u admin log.');
+    renderPage('Prijava prihvacena', 'Hvala, prijava je prebacena u status U tijeku.');
     exit;
 }
 
-renderPage('Prijava odbijena', 'Tvoj odgovor je spremljen u admin log.');
+renderPage('Prijava odbijena', 'Prijava je vracena na Zaprimljeno i volonter je uklonjen.');
