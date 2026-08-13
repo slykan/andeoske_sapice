@@ -212,6 +212,16 @@ function requireAdmin(): void
     }
 }
 
+function currentScope(): array
+{
+    return [
+        'role' => $_SESSION['user_role'] ?? 'ADMIN',
+        'userId' => $_SESSION['user_id'] ?? null,
+        'regionId' => $_SESSION['user_region_id'] ?? null,
+        'organizationId' => $_SESSION['user_organization_id'] ?? null,
+    ];
+}
+
 function makeId(string $prefix): string
 {
     return $prefix . '_' . bin2hex(random_bytes(12));
@@ -471,7 +481,27 @@ function reportFromRow(array $row): array
 
 function listReports(PDO $db): void
 {
-    $rows = $db->query(
+    $scope = currentScope();
+    $whereSql = '';
+    $params = [];
+
+    if ($scope['role'] === 'ORGANIZATION') {
+        if ($scope['regionId'] === null) {
+            respond(200, ['reports' => []]);
+        }
+        $whereSql = ' WHERE r.`regionId` = ?';
+        $params[] = $scope['regionId'];
+    } elseif ($scope['role'] === 'VOLUNTEER') {
+        if ($scope['userId'] === null) {
+            respond(200, ['reports' => []]);
+        }
+        $whereSql = ' WHERE r.`assignedToId` = ?';
+        $params[] = $scope['userId'];
+    } elseif ($scope['role'] !== 'ADMIN') {
+        respond(200, ['reports' => []]);
+    }
+
+    $statement = $db->prepare(
         'SELECT
             r.`id` AS `reportId`,
             r.`publicCode`,
@@ -527,8 +557,9 @@ function listReports(PDO $db): void
          LEFT JOIN `Organization` org ON org.`id` = r.`organizationId`
          LEFT JOIN `ReportFlag` rf ON rf.`reportId` = r.`id`
          LEFT JOIN `ReportAttachment` a ON a.`reportId` = r.`id`
-         LEFT JOIN `ChainDetails` c ON c.`reportId` = r.`id`
-         GROUP BY
+         LEFT JOIN `ChainDetails` c ON c.`reportId` = r.`id`'
+        . $whereSql .
+        ' GROUP BY
             r.`id`,
             r.`publicCode`,
             r.`category`,
@@ -558,7 +589,9 @@ function listReports(PDO $db): void
             c.`notes`
          ORDER BY r.`createdAt` DESC
          LIMIT 100'
-    )->fetchAll();
+    );
+    $statement->execute($params);
+    $rows = $statement->fetchAll();
 
     $reports = [];
     $reportIds = [];

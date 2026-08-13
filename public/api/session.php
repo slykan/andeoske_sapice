@@ -57,6 +57,51 @@ function startAdminSession(): void
     session_start();
 }
 
+function pdo(): PDO
+{
+    $env = loadEnv();
+    $databaseUrl = $env['DATABASE_URL'] ?? getenv('DATABASE_URL');
+
+    if (!$databaseUrl) {
+        respond(500, ['error' => 'DATABASE_URL is not configured.']);
+    }
+
+    $parts = parse_url($databaseUrl);
+    if (!$parts || ($parts['scheme'] ?? '') !== 'mysql') {
+        respond(500, ['error' => 'DATABASE_URL must be a MySQL URL.']);
+    }
+
+    $host = $parts['host'] ?? 'localhost';
+    $port = $parts['port'] ?? 3306;
+    $database = ltrim($parts['path'] ?? '', '/');
+    $user = rawurldecode($parts['user'] ?? '');
+    $password = rawurldecode($parts['pass'] ?? '');
+    $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4";
+
+    try {
+        return new PDO($dsn, $user, $password, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
+    } catch (PDOException) {
+        respond(500, ['error' => 'Database connection failed.']);
+    }
+}
+
+function userByEmail(PDO $db, string $email): ?array
+{
+    $statement = $db->prepare(
+        "SELECT `id`, `email`, `name`, `passwordHash`, `role`, `regionId`, `organizationId`
+         FROM `User`
+         WHERE `email` = ? AND `isActive` = 1 AND `role` IN ('ADMIN', 'VOLUNTEER', 'ORGANIZATION')
+         LIMIT 1"
+    );
+    $statement->execute([$email]);
+    $user = $statement->fetch();
+
+    return $user ?: null;
+}
+
 function readJson(): array
 {
     $body = file_get_contents('php://input') ?: '';
@@ -105,6 +150,7 @@ if ($method === 'GET') {
     respond(200, [
         'isAdmin' => !empty($_SESSION['is_admin']),
         'username' => $_SESSION['admin_username'] ?? null,
+        'role' => $_SESSION['user_role'] ?? ($_SESSION['is_admin'] ?? false ? 'ADMIN' : null),
     ]);
 }
 
@@ -114,14 +160,30 @@ if ($method === 'POST') {
     $password = (string) ($data['password'] ?? '');
     $env = loadEnv();
 
-    if (!usernameMatches($username, $env) || !passwordMatches($password, $env)) {
+    if (usernameMatches($username, $env) && passwordMatches($password, $env)) {
+        session_regenerate_id(true);
+        $_SESSION['is_admin'] = true;
+        $_SESSION['admin_username'] = trim($username);
+        $_SESSION['user_role'] = 'ADMIN';
+        $_SESSION['user_id'] = null;
+        $_SESSION['user_region_id'] = null;
+        $_SESSION['user_organization_id'] = null;
+        respond(200, ['isAdmin' => true, 'role' => 'ADMIN']);
+    }
+
+    $user = userByEmail(pdo(), trim($username));
+    if (!$user || $user['passwordHash'] === null || !password_verify($password, $user['passwordHash'])) {
         respond(401, ['error' => 'Invalid password.']);
     }
 
     session_regenerate_id(true);
     $_SESSION['is_admin'] = true;
-    $_SESSION['admin_username'] = trim($username);
-    respond(200, ['isAdmin' => true]);
+    $_SESSION['admin_username'] = $user['name'] ?: $user['email'];
+    $_SESSION['user_role'] = $user['role'];
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['user_region_id'] = $user['regionId'];
+    $_SESSION['user_organization_id'] = $user['organizationId'];
+    respond(200, ['isAdmin' => true, 'role' => $user['role']]);
 }
 
 if ($method === 'DELETE') {

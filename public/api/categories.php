@@ -106,6 +106,10 @@ function requireAdmin(): void
     if (empty($_SESSION['is_admin'])) {
         respond(401, ['error' => 'Admin login required.']);
     }
+
+    if (($_SESSION['user_role'] ?? 'ADMIN') !== 'ADMIN') {
+        respond(403, ['error' => 'Admin role required.']);
+    }
 }
 
 function makeId(string $prefix): string

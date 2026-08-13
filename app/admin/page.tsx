@@ -287,6 +287,7 @@ export default function AdminPage() {
     users: [],
   });
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loginFeedback, setLoginFeedback] = useState("");
   const [categoryFeedback, setCategoryFeedback] = useState("");
   const [adminFeedback, setAdminFeedback] = useState("");
@@ -321,10 +322,12 @@ export default function AdminPage() {
   async function loadSession() {
     try {
       const response = await fetch(sessionApiPath, { cache: "no-store" });
-      const data = (await response.json()) as { isAdmin: boolean };
+      const data = (await response.json()) as { isAdmin: boolean; role?: string | null };
       setIsAdmin(data.isAdmin);
+      setUserRole(data.role || null);
     } catch {
       setIsAdmin(false);
+      setUserRole(null);
     }
   }
 
@@ -389,11 +392,14 @@ export default function AdminPage() {
         throw new Error("Login failed");
       }
 
+      const data = (await response.json()) as { isAdmin: boolean; role?: string | null };
       setIsAdmin(true);
+      setUserRole(data.role || null);
       setLoginFeedback("");
       form.reset();
     } catch {
       setIsAdmin(false);
+      setUserRole(null);
       setLoginFeedback("Prijava nije uspjela.");
     }
   }
@@ -401,6 +407,8 @@ export default function AdminPage() {
   async function logout() {
     await fetch(sessionApiPath, { method: "DELETE" });
     setIsAdmin(false);
+    setUserRole(null);
+    setAdminView("reports");
     setReports([]);
     setAdminData({ regions: [], organizations: [], users: [] });
   }
@@ -896,20 +904,24 @@ export default function AdminPage() {
           <a className="button button--quiet" href={`${basePath}/`}>
             Javna stranica
           </a>
-          <button
-            className={`button ${adminView === "reports" ? "button--primary" : "button--quiet"}`}
-            onClick={() => setAdminView("reports")}
-            type="button"
-          >
-            Prijave
-          </button>
-          <button
-            className={`button ${adminView === "users" ? "button--primary" : "button--quiet"}`}
-            onClick={() => setAdminView("users")}
-            type="button"
-          >
-            Korisnici
-          </button>
+          {userRole === "ADMIN" ? (
+            <>
+              <button
+                className={`button ${adminView === "reports" ? "button--primary" : "button--quiet"}`}
+                onClick={() => setAdminView("reports")}
+                type="button"
+              >
+                Prijave
+              </button>
+              <button
+                className={`button ${adminView === "users" ? "button--primary" : "button--quiet"}`}
+                onClick={() => setAdminView("users")}
+                type="button"
+              >
+                Korisnici
+              </button>
+            </>
+          ) : null}
           <button className="button button--primary" onClick={logout} type="button">
             Odjava
           </button>
@@ -1291,6 +1303,8 @@ export default function AdminPage() {
             </div>
           </section>
 
+          {userRole === "ADMIN" ? (
+          <>
           <details className="admin-panel admin-panel--fold">
             <summary className="admin-panel__header">
               <h3>Regije</h3>
@@ -1632,6 +1646,8 @@ export default function AdminPage() {
               </p>
             ) : null}
           </details>
+          </>
+          ) : null}
         </aside>
       </section>
 

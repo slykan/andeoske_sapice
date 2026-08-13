@@ -118,6 +118,43 @@ function requireAdmin(): void
     }
 }
 
+function currentScope(): array
+{
+    return [
+        'role' => $_SESSION['user_role'] ?? 'ADMIN',
+        'userId' => $_SESSION['user_id'] ?? null,
+        'regionId' => $_SESSION['user_region_id'] ?? null,
+        'organizationId' => $_SESSION['user_organization_id'] ?? null,
+    ];
+}
+
+function requireAdminRole(): void
+{
+    requireAdmin();
+    if (currentScope()['role'] !== 'ADMIN') {
+        respond(403, ['error' => 'Admin role required.']);
+    }
+}
+
+function requireReportInScope(array $report): void
+{
+    $scope = currentScope();
+
+    if ($scope['role'] === 'ADMIN') {
+        return;
+    }
+
+    if ($scope['role'] === 'ORGANIZATION' && $scope['regionId'] !== null && ($report['regionId'] ?? null) === $scope['regionId']) {
+        return;
+    }
+
+    if ($scope['role'] === 'VOLUNTEER' && $scope['userId'] !== null && ($report['assignedToId'] ?? null) === $scope['userId']) {
+        return;
+    }
+
+    respond(403, ['error' => 'Report is outside your scope.']);
+}
+
 function currentAdminName(): string
 {
     $username = trim((string) ($_SESSION['admin_username'] ?? ''));
@@ -195,11 +232,26 @@ function passwordHashFromData(array $data, bool $required): ?string
 
 function listAdminData(PDO $db): void
 {
-    $regions = $db->query(
-        'SELECT `id`, `name` FROM `Region` WHERE `isActive` = 1 ORDER BY `name` ASC'
-    )->fetchAll();
+    $scope = currentScope();
+    $scopedToRegion = $scope['role'] !== 'ADMIN';
 
-    $organizations = $db->query(
+    if ($scopedToRegion && $scope['regionId'] === null) {
+        respond(200, ['regions' => [], 'organizations' => [], 'users' => []]);
+    }
+
+    if ($scopedToRegion) {
+        $statement = $db->prepare(
+            'SELECT `id`, `name` FROM `Region` WHERE `isActive` = 1 AND `id` = ? ORDER BY `name` ASC'
+        );
+        $statement->execute([$scope['regionId']]);
+        $regions = $statement->fetchAll();
+    } else {
+        $regions = $db->query(
+            'SELECT `id`, `name` FROM `Region` WHERE `isActive` = 1 ORDER BY `name` ASC'
+        )->fetchAll();
+    }
+
+    $organizationsSql =
         'SELECT
             o.`id`,
             o.`name`,
@@ -210,11 +262,17 @@ function listAdminData(PDO $db): void
             r.`name` AS `regionName`
          FROM `Organization` o
          LEFT JOIN `Region` r ON r.`id` = o.`regionId`
-         WHERE o.`isActive` = 1
-         ORDER BY o.`name` ASC'
-    )->fetchAll();
+         WHERE o.`isActive` = 1';
 
-    $users = $db->query(
+    if ($scopedToRegion) {
+        $statement = $db->prepare("{$organizationsSql} AND o.`regionId` = ? ORDER BY o.`name` ASC");
+        $statement->execute([$scope['regionId']]);
+        $organizations = $statement->fetchAll();
+    } else {
+        $organizations = $db->query("{$organizationsSql} ORDER BY o.`name` ASC")->fetchAll();
+    }
+
+    $usersSql =
         'SELECT
             u.`id`,
             u.`email`,
@@ -228,9 +286,19 @@ function listAdminData(PDO $db): void
          FROM `User` u
          LEFT JOIN `Region` r ON r.`id` = u.`regionId`
          LEFT JOIN `Organization` o ON o.`id` = u.`organizationId`
-         WHERE u.`isActive` = 1
-         ORDER BY FIELD(u.`role`, "ADMIN", "VOLUNTEER", "ORGANIZATION", "REPORTER"), u.`name`, u.`email`'
-    )->fetchAll();
+         WHERE u.`isActive` = 1';
+
+    if ($scopedToRegion) {
+        $statement = $db->prepare(
+            "{$usersSql} AND u.`regionId` = ? ORDER BY FIELD(u.`role`, \"ADMIN\", \"VOLUNTEER\", \"ORGANIZATION\", \"REPORTER\"), u.`name`, u.`email`"
+        );
+        $statement->execute([$scope['regionId']]);
+        $users = $statement->fetchAll();
+    } else {
+        $users = $db->query(
+            "{$usersSql} ORDER BY FIELD(u.`role`, \"ADMIN\", \"VOLUNTEER\", \"ORGANIZATION\", \"REPORTER\"), u.`name`, u.`email`"
+        )->fetchAll();
+    }
 
     respond(200, [
         'regions' => $regions,
@@ -843,6 +911,8 @@ function notifyVolunteer(PDO $db, array $data): void
             r.`longitude`,
             r.`urgency`,
             r.`status`,
+            r.`regionId`,
+            r.`assignedToId`,
             u.`id` AS `userId`,
             u.`email`,
             u.`name`
@@ -857,6 +927,8 @@ function notifyVolunteer(PDO $db, array $data): void
     if (!$report) {
         respond(404, ['error' => 'Report not found.']);
     }
+
+    requireReportInScope($report);
 
     $recipientEmail = trim((string) ($report['email'] ?? ''));
     if ($recipientEmail === '' || !filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
@@ -921,7 +993,8 @@ function notifyBroadcast(PDO $db, array $data, string $scope): void
             r.`urgency`,
             r.`status`,
             r.`regionId`,
-            r.`organizationId`
+            r.`organizationId`,
+            r.`assignedToId`
          FROM `Report` r
          WHERE r.`publicCode` = ?
          LIMIT 1'
@@ -932,6 +1005,8 @@ function notifyBroadcast(PDO $db, array $data, string $scope): void
     if (!$report) {
         respond(404, ['error' => 'Report not found.']);
     }
+
+    requireReportInScope($report);
 
     if ($scope === 'region') {
         if (!$report['regionId']) {
@@ -1059,7 +1134,8 @@ function assignReport(PDO $db, array $data): void
     $statement = $db->prepare(
         'SELECT
             `id`, `status`, `publicCode`, `category`, `description`, `locationText`,
-            `latitude`, `longitude`, `urgency`, `reporterEmail`, `wantsResolutionNotice`
+            `latitude`, `longitude`, `urgency`, `reporterEmail`, `wantsResolutionNotice`,
+            `regionId`, `assignedToId`
          FROM `Report` WHERE `publicCode` = ? LIMIT 1'
     );
     $statement->execute([$publicCode]);
@@ -1068,6 +1144,8 @@ function assignReport(PDO $db, array $data): void
     if (!$report) {
         respond(404, ['error' => 'Report not found.']);
     }
+
+    requireReportInScope($report);
 
     try {
         $db->beginTransaction();
@@ -1152,6 +1230,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
+    requireAdminRole();
     $data = readJson();
     $type = trim((string) ($data['type'] ?? ''));
 
@@ -1189,14 +1268,17 @@ if ($method === 'PATCH') {
     }
 
     if (($data['type'] ?? '') === 'region') {
+        requireAdminRole();
         updateRegion($db, $data);
     }
 
     if (($data['type'] ?? '') === 'organization') {
+        requireAdminRole();
         updateOrganization($db, $data);
     }
 
     if (($data['type'] ?? '') === 'user') {
+        requireAdminRole();
         updateUser($db, $data);
     }
 
@@ -1204,6 +1286,7 @@ if ($method === 'PATCH') {
 }
 
 if ($method === 'DELETE') {
+    requireAdminRole();
     $data = readJson();
 
     if (($data['type'] ?? '') === 'region') {
