@@ -416,9 +416,28 @@ export default function AdminPage() {
   async function assignReport(report: Report, field: keyof Report, value: string) {
     const nextReport = { ...report, [field]: value || null };
 
+    if (field === "regionId") {
+      const nextRegionId = value || null;
+      const organizationMatchesRegion = adminData.organizations.some(
+        (organization) =>
+          organization.id === nextReport.organizationId && organization.regionId === nextRegionId,
+      );
+      const assigneeMatchesRegion = volunteers.some(
+        (user) => user.id === nextReport.assignedToId && user.regionId === nextRegionId,
+      );
+
+      if (!organizationMatchesRegion) {
+        nextReport.organizationId = null;
+      }
+
+      if (!assigneeMatchesRegion) {
+        nextReport.assignedToId = null;
+      }
+    }
+
     setReports((current) =>
       current.map((item) =>
-        item.id === report.id ? { ...item, [field]: value || null, status: "Dodijeljeno" } : item,
+        item.id === report.id ? { ...nextReport, status: "Dodijeljeno" } : item,
       ),
     );
 
@@ -469,6 +488,22 @@ export default function AdminPage() {
   const visibleSubcategories = selectedSubcategoryCategory
     ? subcategories[selectedSubcategoryCategory] || []
     : [];
+
+  function organizationsForRegion(regionId: string | null) {
+    if (!regionId) {
+      return [];
+    }
+
+    return adminData.organizations.filter((organization) => organization.regionId === regionId);
+  }
+
+  function volunteersForRegion(regionId: string | null) {
+    if (!regionId) {
+      return [];
+    }
+
+    return volunteers.filter((user) => user.regionId === regionId);
+  }
 
   if (!isAdmin) {
     return (
@@ -548,7 +583,19 @@ export default function AdminPage() {
           </div>
 
           <div className="report-list">
-            {visibleReports.map((report) => (
+            {visibleReports.map((report) => {
+              const reportOrganizations = organizationsForRegion(report.regionId);
+              const reportVolunteers = volunteersForRegion(report.regionId);
+              const selectedOrganizationId = reportOrganizations.some(
+                (organization) => organization.id === report.organizationId,
+              )
+                ? report.organizationId || ""
+                : "";
+              const selectedAssigneeId = reportVolunteers.some((user) => user.id === report.assignedToId)
+                ? report.assignedToId || ""
+                : "";
+
+              return (
               <article className="report-card report-card--ops" key={report.id}>
                 <div className="report-card__summary">
                   <span className={`urgency urgency--${report.urgency.toLowerCase()}`}>
@@ -642,11 +689,12 @@ export default function AdminPage() {
                   <label>
                     Grupa
                     <select
-                      value={report.organizationId || ""}
+                      disabled={!report.regionId}
+                      value={selectedOrganizationId}
                       onChange={(event) => assignReport(report, "organizationId", event.target.value)}
                     >
-                      <option value="">Bez grupe</option>
-                      {adminData.organizations.map((organization) => (
+                      <option value="">{report.regionId ? "Bez grupe" : "Prvo odaberi regiju"}</option>
+                      {reportOrganizations.map((organization) => (
                         <option key={organization.id} value={organization.id}>
                           {organization.name}
                         </option>
@@ -656,11 +704,12 @@ export default function AdminPage() {
                   <label>
                     Volonter
                     <select
-                      value={report.assignedToId || ""}
+                      disabled={!report.regionId}
+                      value={selectedAssigneeId}
                       onChange={(event) => assignReport(report, "assignedToId", event.target.value)}
                     >
-                      <option value="">Bez volontera</option>
-                      {volunteers.map((user) => (
+                      <option value="">{report.regionId ? "Bez volontera" : "Prvo odaberi regiju"}</option>
+                      {reportVolunteers.map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.name || user.email}
                         </option>
@@ -669,7 +718,8 @@ export default function AdminPage() {
                   </label>
                 </div>
               </article>
-            ))}
+              );
+            })}
             {visibleReports.length === 0 ? (
               <p className="empty-state">Nema prijava za odabrane filtere.</p>
             ) : null}

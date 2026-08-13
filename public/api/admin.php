@@ -476,6 +476,26 @@ function assignReport(PDO $db, array $data): void
     $assignedToId = nullableId($db, $data, 'assignedToId', 'User');
     $now = date('Y-m-d H:i:s');
 
+    if (($organizationId !== null || $assignedToId !== null) && $regionId === null) {
+        respond(422, ['error' => 'Region is required before assignment.']);
+    }
+
+    if ($organizationId !== null) {
+        $statement = $db->prepare('SELECT COUNT(*) FROM `Organization` WHERE `id` = ? AND `regionId` = ? AND `isActive` = 1');
+        $statement->execute([$organizationId, $regionId]);
+        if ((int) $statement->fetchColumn() === 0) {
+            respond(422, ['error' => 'Organization does not belong to selected region.']);
+        }
+    }
+
+    if ($assignedToId !== null) {
+        $statement = $db->prepare('SELECT COUNT(*) FROM `User` WHERE `id` = ? AND `regionId` = ? AND `isActive` = 1');
+        $statement->execute([$assignedToId, $regionId]);
+        if ((int) $statement->fetchColumn() === 0) {
+            respond(422, ['error' => 'User does not belong to selected region.']);
+        }
+    }
+
     $statement = $db->prepare('SELECT `id`, `status` FROM `Report` WHERE `publicCode` = ? LIMIT 1');
     $statement->execute([$publicCode]);
     $report = $statement->fetch();
