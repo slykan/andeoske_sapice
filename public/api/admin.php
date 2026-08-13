@@ -480,7 +480,15 @@ function cleanMailHeader(string $value): string
 function sendVolunteerMail(array $report, string $recipientName, string $recipientEmail): array
 {
     $env = loadEnv();
-    $from = cleanMailHeader((string) ($env['MAIL_FROM'] ?? getenv('MAIL_FROM') ?: 'noreply@andeoske-sapice.app'));
+    $from = cleanMailHeader((string) (
+        $env['MAIL_FROM']
+        ?? $env['EMAIL_FROM']
+        ?? $env['SMTP_USER']
+        ?? getenv('MAIL_FROM')
+        ?: getenv('EMAIL_FROM')
+        ?: getenv('SMTP_USER')
+        ?: 'noreply@andeoske-sapice.app'
+    ));
     $replyTo = cleanMailHeader((string) ($env['MAIL_REPLY_TO'] ?? getenv('MAIL_REPLY_TO') ?: $from));
     $host = cleanMailHeader((string) ($_SERVER['HTTP_HOST'] ?? 'andeoske-sapice.app'));
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
