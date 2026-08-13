@@ -895,30 +895,38 @@ export default function AdminPage() {
                   <strong>Obavijesti</strong>
                   {report.notifications.length > 0 ? (
                     <ol>
-                      {report.notifications.map((notification) => (
-                        <li key={notification.id}>
-                          <div>
+                      {report.notifications.flatMap((notification) => {
+                        const rows = [
+                          <li key={`${notification.id}-sent`}>
                             <span>{formatNotificationTime(notification.createdAt)}</span>
                             <small>
                               {notificationStatusLabel(notification.status)} - {notification.recipientName}
                             </small>
-                          </div>
-                          {notification.responseStatus && notification.respondedAt ? (
-                            <small
+                          </li>,
+                        ];
+
+                        if (notification.responseStatus && notification.respondedAt) {
+                          rows.push(
+                            <li
                               className={`notification-response notification-response--${notification.responseStatus.toLowerCase()}`}
+                              key={`${notification.id}-response`}
                             >
                               {notification.responseStatus === "ACCEPTED" ? (
-                                <CheckCircle2 size={16} />
+                                <CheckCircle2 size={16} aria-hidden="true" />
                               ) : (
-                                <XCircle size={16} />
+                                <XCircle size={16} aria-hidden="true" />
                               )}
-                              {formatNotificationTime(notification.respondedAt)} -{" "}
-                              {notification.recipientName} -{" "}
-                              {notificationResponseLabel(notification.responseStatus)}
-                            </small>
-                          ) : null}
-                        </li>
-                      ))}
+                              <span>{formatNotificationTime(notification.respondedAt)}</span>
+                              <small>
+                                {notification.recipientName} -{" "}
+                                {notificationResponseLabel(notification.responseStatus)}
+                              </small>
+                            </li>,
+                          );
+                        }
+
+                        return rows;
+                      })}
                     </ol>
                   ) : (
                     <small>Još nema poslanih obavijesti.</small>

@@ -1016,10 +1016,10 @@ legend {
 .notification-log li {
   align-items: center;
   border-bottom: 1px solid var(--line);
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: 7px 0;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 0;
 }
 
 .notification-log li:last-child {
@@ -1042,10 +1042,10 @@ legend {
 
 .notification-response {
   align-items: center;
-  display: inline-flex;
+  display: flex;
   gap: 6px;
-  justify-content: flex-end;
-  text-align: right;
+  justify-content: flex-start;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -1054,7 +1054,12 @@ legend {
 }
 
 .notification-response--declined {
-  color: #8c321f;
+  color: #b6422b;
+}
+
+.notification-response svg {
+  flex: 0 0 auto;
+  stroke-width: 2.4;
 }
 
 .empty-state {
