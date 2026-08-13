@@ -15,6 +15,7 @@ import {
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const apiPath = `${basePath}/api/reports.php`;
+const statsApiPath = `${basePath}/api/reports.php?stats=1`;
 const categoriesApiPath = `${basePath}/api/categories.php`;
 
 const defaultCategories = [
@@ -62,6 +63,12 @@ type ApiCreateResponse = {
 type ApiCategoriesResponse = {
   categories: string[];
   subcategories?: Record<string, string[]>;
+};
+
+type PublicStats = {
+  totalReports: number;
+  resolvedReports: number;
+  volunteers: number;
 };
 
 function extensionlessName(fileName: string) {
@@ -154,6 +161,11 @@ export default function Home() {
     null,
   );
   const [thanksReportId, setThanksReportId] = useState("");
+  const [publicStats, setPublicStats] = useState<PublicStats>({
+    totalReports: 0,
+    resolvedReports: 0,
+    volunteers: 0,
+  });
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -195,6 +207,28 @@ export default function Home() {
     }
 
     loadCategories();
+  }, []);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const response = await fetch(statsApiPath, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Stats API unavailable");
+        }
+
+        const data = (await response.json()) as { stats?: Partial<PublicStats> };
+        setPublicStats({
+          totalReports: Number(data.stats?.totalReports || 0),
+          resolvedReports: Number(data.stats?.resolvedReports || 0),
+          volunteers: Number(data.stats?.volunteers || 0),
+        });
+      } catch {
+        setPublicStats({ totalReports: 0, resolvedReports: 0, volunteers: 0 });
+      }
+    }
+
+    loadStats();
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -262,6 +296,10 @@ export default function Home() {
       const result = (await response.json()) as ApiCreateResponse;
       setFormFeedback(null);
       setThanksReportId(result.report.id);
+      setPublicStats((current) => ({
+        ...current,
+        totalReports: current.totalReports + 1,
+      }));
       form.reset();
       setSelectedCategory(categories[0] || "Pas na lancu");
       setSelectedAttachments([]);
@@ -551,6 +589,29 @@ export default function Home() {
             {isSaving ? "Spremanje..." : "Spremi prijavu"}
           </button>
         </form>
+        <div className="public-stats" aria-label="Pregled prijava">
+          {[
+            { label: "Broj prijava", value: publicStats.totalReports, fill: 100 },
+            {
+              label: "Broj riješenih slučajeva",
+              value: publicStats.resolvedReports,
+              fill:
+                publicStats.totalReports > 0
+                  ? Math.round((publicStats.resolvedReports / publicStats.totalReports) * 100)
+                  : 0,
+            },
+            { label: "Broj volontera", value: publicStats.volunteers, fill: 72 },
+            { label: "U pripremi", value: "—", fill: 0 },
+          ].map((stat) => (
+            <article className="public-stat" key={stat.label}>
+              <span>{stat.label}</span>
+              <strong>{stat.value}</strong>
+              <div className="public-stat__bar">
+                <span style={{ width: `${Math.max(0, Math.min(Number(stat.fill) || 0, 100))}%` }} />
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="features" id="privatnost">

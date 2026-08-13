@@ -600,6 +600,23 @@ function listReports(PDO $db): void
     respond(200, ['reports' => array_values($reports)]);
 }
 
+function publicStats(PDO $db): void
+{
+    $totalReports = (int) $db->query('SELECT COUNT(*) FROM `Report`')->fetchColumn();
+    $resolvedReports = (int) $db->query('SELECT COUNT(*) FROM `Report` WHERE `status` = "CLOSED"')->fetchColumn();
+    $volunteers = (int) $db->query(
+        'SELECT COUNT(*) FROM `User` WHERE `isActive` = 1 AND `role` IN ("VOLUNTEER", "ADMIN")'
+    )->fetchColumn();
+
+    respond(200, [
+        'stats' => [
+            'totalReports' => $totalReports,
+            'resolvedReports' => $resolvedReports,
+            'volunteers' => $volunteers,
+        ],
+    ]);
+}
+
 function createReport(PDO $db): void
 {
     $data = readJson();
@@ -786,6 +803,10 @@ $db = pdo();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
+    if (($_GET['stats'] ?? '') === '1') {
+        publicStats($db);
+    }
+
     requireAdmin();
     listReports($db);
 }

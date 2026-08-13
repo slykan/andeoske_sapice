@@ -230,6 +230,50 @@ h3 {
   padding: 24px;
 }
 
+.public-stats {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.public-stat {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  min-height: 138px;
+  padding: 18px;
+}
+
+.public-stat span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.public-stat strong {
+  color: var(--ink);
+  font-size: clamp(2.1rem, 5vw, 3.2rem);
+  line-height: 0.95;
+}
+
+.public-stat__bar {
+  align-self: end;
+  background: #ece6da;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.public-stat__bar span {
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
 .hp-field {
   height: 0;
   left: -10000px;
@@ -1276,6 +1320,7 @@ legend {
 
   .form-grid,
   .checks,
+  .public-stats,
   .dashboard-tools,
   .assignment-grid,
   .admin-grid,
