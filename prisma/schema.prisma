@@ -59,6 +59,7 @@ model User {
   assignedReports Report[]              @relation("ReportAssignedTo")
   statusChanges   ReportStatusHistory[]
   fieldNotes      FieldNote[]
+  notifications   ReportNotification[]
   isActive        Boolean               @default(true)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
@@ -150,6 +151,7 @@ model Report {
   flags          ReportFlag[]
   statusHistory  ReportStatusHistory[]
   fieldNotes     FieldNote[]
+  notifications  ReportNotification[]
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   closedAt       DateTime?
@@ -233,4 +235,22 @@ model FieldNote {
 
   @@index([reportId])
   @@index([authorId])
+}
+
+model ReportNotification {
+  id             String   @id @default(cuid())
+  reportId       String
+  report         Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  recipientName  String
+  recipientEmail String
+  status         String   @default("SENT")
+  subject        String
+  error          String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([reportId])
+  @@index([userId])
+  @@index([createdAt])
 }

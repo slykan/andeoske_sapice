@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Building2, Edit3, MapPinned, Plus, Save, Trash2, UserRoundPlus, X } from "lucide-react";
+import { Building2, Edit3, Mail, MapPinned, Plus, Save, Trash2, UserRoundPlus, X } from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const reportsApiPath = `${basePath}/api/reports.php`;
@@ -40,6 +40,7 @@ type Report = {
   organizationId: string | null;
   organizationName: string | null;
   attachments: ReportAttachment[];
+  notifications: ReportNotification[];
 };
 
 type ReportAttachment = {
@@ -47,6 +48,14 @@ type ReportAttachment = {
   fileName: string;
   mimeType: string;
   kind: string;
+};
+
+type ReportNotification = {
+  id: string;
+  recipientName: string;
+  recipientEmail: string;
+  status: string;
+  createdAt: string;
 };
 
 type Region = {
@@ -120,7 +129,26 @@ function normalizeReports(reports: Report[]): Report[] {
             typeof attachment.fileName === "string",
         )
       : [],
+    notifications: Array.isArray(report.notifications) ? report.notifications : [],
   }));
+}
+
+function formatNotificationTime(value: string) {
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString("hr-HR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function notificationStatusLabel(status: string) {
+  return status === "SENT" ? "poslano" : "greška";
 }
 
 export default function AdminPage() {
@@ -487,6 +515,31 @@ export default function AdminPage() {
     setReportFeedback((current) => ({ ...current, [report.id]: "Spremljeno." }));
   }
 
+  async function notifyVolunteer(report: Report) {
+    setReportFeedback((current) => ({ ...current, [report.id]: "Šaljem obavijest..." }));
+
+    const response = await fetch(adminApiPath, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "notifyVolunteer",
+        reportId: report.id,
+      }),
+    });
+
+    if (!response.ok) {
+      await loadReports();
+      setReportFeedback((current) => ({
+        ...current,
+        [report.id]: "Obavijest nije poslana.",
+      }));
+      return;
+    }
+
+    await loadReports();
+    setReportFeedback((current) => ({ ...current, [report.id]: "Obavijest poslana." }));
+  }
+
   const volunteers = useMemo(
     () => adminData.users.filter((user) => user.role === "VOLUNTEER" || user.role === "ADMIN"),
     [adminData.users],
@@ -757,6 +810,38 @@ export default function AdminPage() {
                   {reportFeedback[report.id] ? (
                     <span className="admin-feedback">{reportFeedback[report.id]}</span>
                   ) : null}
+                </div>
+                <div className="notification-actions">
+                  <button
+                    className="button button--quiet"
+                    disabled={hasReportChanges || !report.assignedToId}
+                    onClick={() => notifyVolunteer(report)}
+                    type="button"
+                  >
+                    <Mail size={16} />
+                    {hasReportChanges
+                      ? "Prvo spremi izmjene"
+                      : report.assignedToId
+                        ? "Pošalji obavijest volonteru"
+                        : "Dodijeli volontera"}
+                  </button>
+                </div>
+                <div className="notification-log">
+                  <strong>Obavijesti</strong>
+                  {report.notifications.length > 0 ? (
+                    <ol>
+                      {report.notifications.map((notification) => (
+                        <li key={notification.id}>
+                          <span>{formatNotificationTime(notification.createdAt)}</span>
+                          <small>
+                            {notificationStatusLabel(notification.status)} - {notification.recipientName}
+                          </small>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <small>Još nema poslanih obavijesti.</small>
+                  )}
                 </div>
               </article>
               );

@@ -445,6 +445,7 @@ function reportFromRow(array $row): array
         'organizationId' => $row['organizationId'],
         'organizationName' => $row['organizationName'],
         'attachments' => $attachments,
+        'notifications' => [],
     ];
 }
 
@@ -532,10 +533,46 @@ function listReports(PDO $db): void
     )->fetchAll();
 
     $reports = [];
+    $reportIds = [];
     foreach ($rows as $row) {
-        $reports[] = reportFromRow($row);
+        $report = reportFromRow($row);
+        $reports[$row['reportId']] = $report;
+        $reportIds[] = $row['reportId'];
     }
-    respond(200, ['reports' => $reports]);
+
+    if ($reportIds) {
+        $placeholders = implode(',', array_fill(0, count($reportIds), '?'));
+        $statement = $db->prepare(
+            "SELECT
+                `id`,
+                `reportId`,
+                `recipientName`,
+                `recipientEmail`,
+                `status`,
+                `createdAt`
+             FROM `ReportNotification`
+             WHERE `reportId` IN ({$placeholders})
+             ORDER BY `createdAt` DESC"
+        );
+        $statement->execute($reportIds);
+
+        foreach ($statement->fetchAll() as $notification) {
+            $reportId = $notification['reportId'];
+            if (!isset($reports[$reportId])) {
+                continue;
+            }
+
+            $reports[$reportId]['notifications'][] = [
+                'id' => $notification['id'],
+                'recipientName' => $notification['recipientName'],
+                'recipientEmail' => $notification['recipientEmail'],
+                'status' => $notification['status'],
+                'createdAt' => $notification['createdAt'],
+            ];
+        }
+    }
+
+    respond(200, ['reports' => array_values($reports)]);
 }
 
 function createReport(PDO $db): void

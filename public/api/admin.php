@@ -472,6 +472,124 @@ function deleteUser(PDO $db, array $data): void
     listAdminData($db);
 }
 
+function cleanMailHeader(string $value): string
+{
+    return trim(str_replace(["\r", "\n"], '', $value));
+}
+
+function sendVolunteerMail(array $report, string $recipientName, string $recipientEmail): array
+{
+    $env = loadEnv();
+    $from = cleanMailHeader((string) ($env['MAIL_FROM'] ?? getenv('MAIL_FROM') ?: 'noreply@andeoske-sapice.app'));
+    $replyTo = cleanMailHeader((string) ($env['MAIL_REPLY_TO'] ?? getenv('MAIL_REPLY_TO') ?: $from));
+    $host = cleanMailHeader((string) ($_SERVER['HTTP_HOST'] ?? 'andeoske-sapice.app'));
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
+    $adminUrl = "{$scheme}://{$host}/admin";
+    $subject = 'Dodijeljena prijava ' . $report['publicCode'];
+    $statusLabel = array_search($report['status'], REPORT_STATUSES, true) ?: $report['status'];
+
+    $body = implode("\n", [
+        "Pozdrav {$recipientName},",
+        '',
+        'Dodijeljena ti je prijava u sustavu Andeoske sapice.',
+        '',
+        'Broj prijave: ' . $report['publicCode'],
+        'Kategorija: ' . $report['category'],
+        'Lokacija: ' . $report['locationText'],
+        'Status: ' . $statusLabel,
+        '',
+        'Admin: ' . $adminUrl,
+        '',
+        'Ova obavijest je poslana iz admin sucelja.',
+    ]);
+
+    $headers = implode("\r\n", [
+        "From: Andeoske Sapice <{$from}>",
+        "Reply-To: {$replyTo}",
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+    ]);
+
+    $sent = @mail($recipientEmail, $subject, $body, $headers);
+
+    return [
+        'sent' => $sent,
+        'subject' => $subject,
+        'error' => $sent ? null : 'Server mail() nije prihvatio poruku.',
+    ];
+}
+
+function notifyVolunteer(PDO $db, array $data): void
+{
+    $publicCode = nullableString($data, 'reportId', 80);
+    if ($publicCode === null) {
+        respond(422, ['error' => 'Report id is required.']);
+    }
+
+    $statement = $db->prepare(
+        'SELECT
+            r.`id`,
+            r.`publicCode`,
+            r.`category`,
+            r.`locationText`,
+            r.`status`,
+            u.`id` AS `userId`,
+            u.`email`,
+            u.`name`
+         FROM `Report` r
+         LEFT JOIN `User` u ON u.`id` = r.`assignedToId` AND u.`isActive` = 1
+         WHERE r.`publicCode` = ?
+         LIMIT 1'
+    );
+    $statement->execute([$publicCode]);
+    $report = $statement->fetch();
+
+    if (!$report) {
+        respond(404, ['error' => 'Report not found.']);
+    }
+
+    $recipientEmail = trim((string) ($report['email'] ?? ''));
+    if ($recipientEmail === '' || !filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+        respond(422, ['error' => 'Assigned volunteer has no valid email.']);
+    }
+
+    $recipientName = trim((string) ($report['name'] ?? ''));
+    if ($recipientName === '') {
+        $recipientName = $recipientEmail;
+    }
+
+    $mail = sendVolunteerMail($report, $recipientName, $recipientEmail);
+    $now = date('Y-m-d H:i:s');
+    $status = $mail['sent'] ? 'SENT' : 'FAILED';
+
+    try {
+        $statement = $db->prepare(
+            'INSERT INTO `ReportNotification`
+             (`id`, `reportId`, `userId`, `recipientName`, `recipientEmail`, `status`, `subject`, `error`, `createdAt`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $statement->execute([
+            makeId('notif'),
+            $report['id'],
+            $report['userId'],
+            $recipientName,
+            $recipientEmail,
+            $status,
+            $mail['subject'],
+            $mail['error'],
+            $now,
+        ]);
+    } catch (Throwable) {
+        respond(500, ['error' => 'Could not save notification log.']);
+    }
+
+    if (!$mail['sent']) {
+        respond(500, ['error' => 'Notification email could not be sent.']);
+    }
+
+    respond(200, ['ok' => true]);
+}
+
 function assignReport(PDO $db, array $data): void
 {
     $publicCode = nullableString($data, 'reportId', 80);
@@ -592,6 +710,10 @@ if ($method === 'POST') {
 
 if ($method === 'PATCH') {
     $data = readJson();
+    if (($data['type'] ?? '') === 'notifyVolunteer') {
+        notifyVolunteer($db, $data);
+    }
+
     if (($data['type'] ?? '') === 'assignment') {
         assignReport($db, $data);
     }

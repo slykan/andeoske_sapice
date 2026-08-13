@@ -741,6 +741,53 @@ legend {
   justify-content: flex-end;
 }
 
+.notification-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.notification-actions .button {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+}
+
+.notification-log {
+  background: #fbfaf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+}
+
+.notification-log strong {
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.notification-log ol {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notification-log li {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.notification-log span,
+.notification-log small {
+  margin: 0;
+}
+
 .empty-state {
   background: var(--paper);
   border: 1px dashed var(--line);
