@@ -651,6 +651,12 @@ export default function Home() {
         </article>
       </section>
 
+      <footer className="site-footer">
+        <a href="https://on-click.hr" rel="noopener noreferrer" target="_blank">
+          Powered by on-click.hr
+        </a>
+      </footer>
+
       {thanksReportId ? (
         <div className="thanks-modal" onClick={() => setThanksReportId("")} role="presentation">
           <div className="thanks-modal__card" onClick={(event) => event.stopPropagation()}>
