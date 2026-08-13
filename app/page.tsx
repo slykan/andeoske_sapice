@@ -448,7 +448,7 @@ export default function Home() {
             <Camera />
             <div>
               <strong>Fotografije i video</strong>
-              <p>Privitci Ä‡e biti privatni i dostupni samo ovlaĹˇtenima.</p>
+              <p>Privitci će biti privatni i dostupni samo ovlaštenima.</p>
             </div>
             <input
               accept="image/*,video/*"
