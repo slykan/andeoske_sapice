@@ -619,12 +619,56 @@ legend {
   justify-content: center;
   min-width: 0;
   overflow: hidden;
+  padding: 0;
 }
 
 .attachment-thumb img {
   height: 100%;
   object-fit: cover;
   width: 100%;
+}
+
+.image-lightbox {
+  align-items: center;
+  background: rgba(20, 18, 13, 0.82);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 100;
+}
+
+.image-lightbox__content {
+  max-height: min(86vh, 860px);
+  max-width: min(92vw, 1080px);
+  position: relative;
+}
+
+.image-lightbox__content img {
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: block;
+  max-height: min(86vh, 860px);
+  max-width: min(92vw, 1080px);
+  object-fit: contain;
+}
+
+.image-lightbox__close {
+  align-items: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  height: 38px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: -12px;
+  top: -12px;
+  width: 38px;
 }
 
 .map-preview {

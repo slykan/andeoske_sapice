@@ -118,6 +118,7 @@ export default function AdminPage() {
   const [editingRegion, setEditingRegion] = useState<Region | null>(null);
   const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [zoomedAttachment, setZoomedAttachment] = useState<ReportAttachment | null>(null);
   const [statusFilter, setStatusFilter] = useState("Svi statusi");
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
   const [regionFilter, setRegionFilter] = useState("Sve regije");
@@ -552,21 +553,29 @@ export default function AdminPage() {
                   {report.attachments.length > 0 ? (
                     <div className="attachment-grid">
                       {report.attachments.map((attachment) => (
-                        <a
-                          className="attachment-thumb"
-                          href={attachment.url}
-                          key={`${report.id}-${attachment.url}`}
-                          rel="noreferrer"
-                          target="_blank"
-                          title={attachment.fileName}
-                        >
-                          {attachment.mimeType.startsWith("image/") ? (
-                            // eslint-disable-next-line @next/next/no-img-element
+                        attachment.mimeType.startsWith("image/") ? (
+                          <button
+                            className="attachment-thumb"
+                            key={`${report.id}-${attachment.url}`}
+                            onClick={() => setZoomedAttachment(attachment)}
+                            title={attachment.fileName}
+                            type="button"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img alt={attachment.fileName} src={attachment.url} />
-                          ) : (
+                          </button>
+                        ) : (
+                          <a
+                            className="attachment-thumb"
+                            href={attachment.url}
+                            key={`${report.id}-${attachment.url}`}
+                            rel="noreferrer"
+                            target="_blank"
+                            title={attachment.fileName}
+                          >
                             <span>{attachment.kind === "VIDEO" ? "Video" : "Privitak"}</span>
-                          )}
-                        </a>
+                          </a>
+                        )
                       ))}
                     </div>
                   ) : null}
@@ -1004,6 +1013,26 @@ export default function AdminPage() {
           </section>
         </aside>
       </section>
+
+      {zoomedAttachment ? (
+        <div
+          className="image-lightbox"
+          onClick={() => setZoomedAttachment(null)}
+          role="presentation"
+        >
+          <div className="image-lightbox__content" onClick={(event) => event.stopPropagation()}>
+            <button
+              className="image-lightbox__close"
+              onClick={() => setZoomedAttachment(null)}
+              type="button"
+            >
+              <X size={20} />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt={zoomedAttachment.fileName} src={zoomedAttachment.url} />
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
