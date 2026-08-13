@@ -134,7 +134,7 @@ try {
     if (!$notification) {
         $db->rollBack();
         http_response_code(404);
-        renderPage('Link nije pronaden', 'Ovaj link za odgovor nije pronaden.');
+        renderPage('Link nije pronađen', 'Ovaj link za odgovor nije pronađen.');
         exit;
     }
 
@@ -186,13 +186,13 @@ try {
         $db->rollBack();
     }
     http_response_code(500);
-    renderPage('Greska', 'Odgovor trenutno nije moguce spremiti.');
+    renderPage('Greška', 'Odgovor trenutno nije moguće spremiti.');
     exit;
 }
 
 if ($responseStatus === 'ACCEPTED') {
-    renderPage('Prijava prihvacena', 'Hvala, prijava je prebacena u status U tijeku.');
+    renderPage('Prijava prihvaćena', 'Hvala, prijava je prebačena u status U tijeku.');
     exit;
 }
 
-renderPage('Prijava odbijena', 'Prijava je vracena na Zaprimljeno i volonter je uklonjen.');
+renderPage('Prijava odbijena', 'Prijava je vraćena na Zaprimljeno i volonter je uklonjen.');
