@@ -477,6 +477,11 @@ function cleanMailHeader(string $value): string
     return trim(str_replace(["\r", "\n"], '', $value));
 }
 
+function escapeHtml(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
 function sendVolunteerMail(array $report, string $recipientName, string $recipientEmail): array
 {
     $env = loadEnv();
@@ -495,27 +500,117 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
     $adminUrl = "{$scheme}://{$host}/admin";
     $subject = 'Dodijeljena prijava ' . $report['publicCode'];
     $statusLabel = array_search($report['status'], REPORT_STATUSES, true) ?: $report['status'];
+    $urgencyLabel = [
+        'LOW' => 'Niska',
+        'MEDIUM' => 'Srednja',
+        'HIGH' => 'Visoka',
+    ][$report['urgency'] ?? ''] ?? 'Srednja';
 
-    $body = implode("\n", [
+    $textBody = implode("\n", [
         "Pozdrav {$recipientName},",
         '',
         'Dodijeljena ti je prijava u sustavu Andeoske sapice.',
         '',
         'Broj prijave: ' . $report['publicCode'],
+        'Hitnost: ' . $urgencyLabel,
         'Kategorija: ' . $report['category'],
         'Lokacija: ' . $report['locationText'],
         'Status: ' . $statusLabel,
+        'Opis: ' . $report['description'],
         '',
         'Admin: ' . $adminUrl,
         '',
         'Ova obavijest je poslana iz admin sucelja.',
     ]);
 
+    $safeName = escapeHtml($recipientName);
+    $safeCode = escapeHtml($report['publicCode']);
+    $safeUrgency = escapeHtml($urgencyLabel);
+    $safeCategory = escapeHtml($report['category']);
+    $safeLocation = escapeHtml($report['locationText']);
+    $safeStatus = escapeHtml($statusLabel);
+    $safeDescription = nl2br(escapeHtml($report['description']));
+    $safeAdminUrl = escapeHtml($adminUrl);
+    $htmlBody = <<<HTML
+<!doctype html>
+<html lang="hr">
+  <body style="margin:0;background:#f6f2ea;color:#1f2a24;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f2ea;padding:28px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fffdf8;border:1px solid #ded6c8;border-radius:10px;overflow:hidden;">
+            <tr>
+              <td style="background:#2f5d50;color:#ffffff;padding:22px 26px;">
+                <div style="font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Andeoske sapice</div>
+                <h1 style="font-size:24px;line-height:1.2;margin:8px 0 0;">Dodijeljena ti je prijava</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 26px;">
+                <p style="font-size:16px;line-height:1.55;margin:0 0 18px;">Pozdrav {$safeName},</p>
+                <p style="font-size:16px;line-height:1.55;margin:0 0 22px;">U admin sustavu ti je dodijeljena nova prijava. Pregledaj detalje i preuzmi daljnje korake.</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 22px;">
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Broj prijave</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeCode}</td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Hitnost</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeUrgency}</td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Status</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeStatus}</td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Kategorija</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeCategory}</td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Lokacija</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeLocation}</td>
+                  </tr>
+                </table>
+                <div style="background:#f6f2ea;border:1px solid #e6ded1;border-radius:8px;padding:14px 16px;margin:0 0 24px;">
+                  <div style="color:#6a5f53;font-size:13px;font-weight:700;margin-bottom:6px;">Opis</div>
+                  <div style="font-size:15px;line-height:1.55;">{$safeDescription}</div>
+                </div>
+                <a href="{$safeAdminUrl}" style="background:#2f5d50;border-radius:7px;color:#ffffff;display:inline-block;font-size:15px;font-weight:700;padding:12px 18px;text-decoration:none;">Otvori admin</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f6f2ea;color:#6a5f53;font-size:12px;line-height:1.45;padding:14px 26px;">
+                Ova obavijest je poslana iz admin sucelja.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+HTML;
+
+    $boundary = 'andeoske_' . bin2hex(random_bytes(12));
+    $body = implode("\r\n", [
+        "--{$boundary}",
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        $textBody,
+        "--{$boundary}",
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        $htmlBody,
+        "--{$boundary}--",
+    ]);
+
     $headers = implode("\r\n", [
         "From: Andeoske Sapice <{$from}>",
         "Reply-To: {$replyTo}",
         'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
+        "Content-Type: multipart/alternative; boundary=\"{$boundary}\"",
     ]);
 
     $sent = @mail($recipientEmail, $subject, $body, $headers);
@@ -539,7 +634,9 @@ function notifyVolunteer(PDO $db, array $data): void
             r.`id`,
             r.`publicCode`,
             r.`category`,
+            r.`description`,
             r.`locationText`,
+            r.`urgency`,
             r.`status`,
             u.`id` AS `userId`,
             u.`email`,
