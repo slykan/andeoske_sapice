@@ -1238,7 +1238,7 @@ legend {
 }
 
 .admin-grid--management .admin-panel--fold[open] {
-  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+  grid-template-columns: 1fr;
 }
 
 .admin-grid--management .admin-panel--fold[open] > summary {
@@ -1249,6 +1249,14 @@ legend {
 .admin-grid--management .admin-panel--fold[open] > .category-list,
 .admin-grid--management .admin-panel--fold[open] > .subcategory-list {
   max-height: 320px;
+}
+
+.admin-grid--management .admin-panel--fold[open] > .category-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-grid--management .admin-panel--fold[open] > .subcategory-form {
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1fr) auto;
 }
 
 @media (max-width: 820px) {
