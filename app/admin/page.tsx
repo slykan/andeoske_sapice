@@ -798,20 +798,7 @@ export default function AdminPage() {
                     </select>
                   </label>
                 </div>
-                <div className="report-save-row">
-                  <button
-                    className="button button--primary"
-                    disabled={!hasReportChanges}
-                    onClick={() => saveReportDraft(report, draft)}
-                    type="button"
-                  >
-                    Spremi
-                  </button>
-                  {reportFeedback[report.id] ? (
-                    <span className="admin-feedback">{reportFeedback[report.id]}</span>
-                  ) : null}
-                </div>
-                <div className="notification-actions">
+                <div className="report-actions">
                   <button
                     className="button button--quiet"
                     disabled={hasReportChanges || !report.assignedToId}
@@ -825,6 +812,19 @@ export default function AdminPage() {
                         ? "Pošalji obavijest volonteru"
                         : "Dodijeli volontera"}
                   </button>
+                  <div className="report-actions__save">
+                    {reportFeedback[report.id] ? (
+                      <span className="admin-feedback">{reportFeedback[report.id]}</span>
+                    ) : null}
+                    <button
+                      className="button button--primary"
+                      disabled={!hasReportChanges}
+                      onClick={() => saveReportDraft(report, draft)}
+                      type="button"
+                    >
+                      Spremi
+                    </button>
+                  </div>
                 </div>
                 <div className="notification-log">
                   <strong>Obavijesti</strong>
