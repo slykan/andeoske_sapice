@@ -3,12 +3,14 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   AlertTriangle,
+  Apple,
   Camera,
   CheckCircle2,
   ClipboardList,
   FileText,
   HeartHandshake,
   MapPin,
+  Play,
   ShieldCheck,
   UserRoundCheck,
   UserRoundPlus,
@@ -675,6 +677,33 @@ export default function Home() {
               svojoj regiji, javite nam se.
             </p>
           </article>
+        </div>
+      </section>
+
+      <section className="band app-badges">
+        <div className="section-heading">
+          <span>Uskoro</span>
+          <h2>Anđeoske šapice u tvom džepu</h2>
+        </div>
+        <p className="about-lead">
+          Mobilna aplikacija je u pripremi kako bi prijava zanemarivanja ili zlostavljanja
+          životinje bila moguća u par dodira, gdje god se nalazio/la.
+        </p>
+        <div className="app-badges__row">
+          <span className="store-badge" aria-disabled="true">
+            <Apple size={28} />
+            <span className="store-badge__text">
+              <small>Uskoro na</small>
+              <strong>App Store</strong>
+            </span>
+          </span>
+          <span className="store-badge" aria-disabled="true">
+            <Play size={22} />
+            <span className="store-badge__text">
+              <small>Uskoro na</small>
+              <strong>Google Play</strong>
+            </span>
+          </span>
         </div>
       </section>
 
