@@ -722,6 +722,13 @@ export default function AdminPage() {
             <form className="stack-form" onSubmit={(event) => createAdminEntity(event, "user")}>
               <input aria-label="Ime korisnika" name="name" placeholder="Ime i prezime" />
               <input aria-label="Email korisnika" name="email" placeholder="Email" type="email" />
+              <input
+                aria-label="Lozinka korisnika"
+                name="password"
+                placeholder="Lozinka"
+                required
+                type="password"
+              />
               <input aria-label="Telefon korisnika" name="phone" placeholder="Telefon" />
               <div className="form-grid form-grid--compact">
                 <select aria-label="Uloga korisnika" name="role" defaultValue="VOLUNTEER">
@@ -768,6 +775,12 @@ export default function AdminPage() {
                     defaultValue={user.email}
                     placeholder="Email"
                     type="email"
+                  />
+                  <input
+                    aria-label="Nova lozinka korisnika"
+                    name="password"
+                    placeholder="Nova lozinka"
+                    type="password"
                   />
                   <input
                     aria-label="Telefon korisnika"

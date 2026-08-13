@@ -147,6 +147,25 @@ function nullableId(PDO $db, array $data, string $key, string $table): ?string
     return $id;
 }
 
+function passwordHashFromData(array $data, bool $required): ?string
+{
+    $password = (string) ($data['password'] ?? '');
+
+    if ($password === '') {
+        if ($required) {
+            respond(422, ['error' => 'Password is required.']);
+        }
+
+        return null;
+    }
+
+    if (strlen($password) < 8 || strlen($password) > 200) {
+        respond(422, ['error' => 'Password must be between 8 and 200 characters.']);
+    }
+
+    return password_hash($password, PASSWORD_DEFAULT);
+}
+
 function listAdminData(PDO $db): void
 {
     $regions = $db->query(
@@ -259,13 +278,15 @@ function createUser(PDO $db, array $data): void
     $regionId = nullableId($db, $data, 'regionId', 'Region');
     $organizationId = nullableId($db, $data, 'organizationId', 'Organization');
     $phone = nullableString($data, 'phone', 80);
+    $passwordHash = passwordHashFromData($data, true);
     $now = date('Y-m-d H:i:s');
 
     try {
         $statement = $db->prepare(
-            'INSERT INTO `User` (`id`, `email`, `name`, `phone`, `role`, `regionId`, `organizationId`, `createdAt`, `updatedAt`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            'INSERT INTO `User` (`id`, `email`, `passwordHash`, `name`, `phone`, `role`, `regionId`, `organizationId`, `createdAt`, `updatedAt`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
+                `passwordHash` = VALUES(`passwordHash`),
                 `name` = VALUES(`name`),
                 `phone` = VALUES(`phone`),
                 `role` = VALUES(`role`),
@@ -274,7 +295,7 @@ function createUser(PDO $db, array $data): void
                 `isActive` = 1,
                 `updatedAt` = VALUES(`updatedAt`)'
         );
-        $statement->execute([makeId('usr'), $email, $name, $phone, $role, $regionId, $organizationId, $now, $now]);
+        $statement->execute([makeId('usr'), $email, $passwordHash, $name, $phone, $role, $regionId, $organizationId, $now, $now]);
     } catch (Throwable) {
         respond(500, ['error' => 'Could not save user.']);
     }
@@ -355,14 +376,24 @@ function updateUser(PDO $db, array $data): void
     $regionId = nullableId($db, $data, 'regionId', 'Region');
     $organizationId = nullableId($db, $data, 'organizationId', 'Organization');
     $phone = nullableString($data, 'phone', 80);
+    $passwordHash = passwordHashFromData($data, false);
 
     try {
-        $statement = $db->prepare(
-            'UPDATE `User`
-             SET `email` = ?, `name` = ?, `phone` = ?, `role` = ?, `regionId` = ?, `organizationId` = ?, `updatedAt` = ?
-             WHERE `id` = ? AND `isActive` = 1'
-        );
-        $statement->execute([$email, $name, $phone, $role, $regionId, $organizationId, date('Y-m-d H:i:s'), $id]);
+        if ($passwordHash !== null) {
+            $statement = $db->prepare(
+                'UPDATE `User`
+                 SET `email` = ?, `passwordHash` = ?, `name` = ?, `phone` = ?, `role` = ?, `regionId` = ?, `organizationId` = ?, `updatedAt` = ?
+                 WHERE `id` = ? AND `isActive` = 1'
+            );
+            $statement->execute([$email, $passwordHash, $name, $phone, $role, $regionId, $organizationId, date('Y-m-d H:i:s'), $id]);
+        } else {
+            $statement = $db->prepare(
+                'UPDATE `User`
+                 SET `email` = ?, `name` = ?, `phone` = ?, `role` = ?, `regionId` = ?, `organizationId` = ?, `updatedAt` = ?
+                 WHERE `id` = ? AND `isActive` = 1'
+            );
+            $statement->execute([$email, $name, $phone, $role, $regionId, $organizationId, date('Y-m-d H:i:s'), $id]);
+        }
     } catch (Throwable) {
         respond(500, ['error' => 'Could not update user.']);
     }
