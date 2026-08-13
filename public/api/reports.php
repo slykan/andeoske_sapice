@@ -577,6 +577,7 @@ function listReports(PDO $db): void
                 `recipientName`,
                 `recipientEmail`,
                 `status`,
+                `subject`,
                 `responseStatus`,
                 `respondedAt`,
                 `createdAt`
@@ -597,6 +598,7 @@ function listReports(PDO $db): void
                 'recipientName' => $notification['recipientName'],
                 'recipientEmail' => $notification['recipientEmail'],
                 'status' => $notification['status'],
+                'subject' => $notification['subject'],
                 'responseStatus' => $notification['responseStatus'],
                 'respondedAt' => $notification['respondedAt'],
                 'createdAt' => $notification['createdAt'],

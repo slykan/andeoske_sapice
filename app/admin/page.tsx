@@ -78,6 +78,7 @@ type ReportNotification = {
   recipientName: string;
   recipientEmail: string;
   status: string;
+  subject: string;
   responseStatus: string | null;
   respondedAt: string | null;
   createdAt: string;
@@ -188,6 +189,18 @@ function formatNotificationTime(value: string) {
 
 function notificationStatusLabel(status: string) {
   return status === "SENT" ? "poslano" : "greška";
+}
+
+function notificationChannelLabel(subject: string) {
+  if (subject.includes("tvojoj regiji")) {
+    return " regiji";
+  }
+
+  if (subject.includes("tvojoj grupi")) {
+    return " grupi";
+  }
+
+  return "";
 }
 
 function notificationResponseLabel(status: string | null) {
@@ -1102,16 +1115,20 @@ export default function AdminPage() {
                   </label>
                 </div>
                 <div className="report-actions">
+                  {reportFeedback[report.id] ? (
+                    <span className="admin-feedback">{reportFeedback[report.id]}</span>
+                  ) : null}
                   <button
-                    className={`button button--notify ${report.assignedToId ? "button--success" : "button--quiet"}`}
-                    disabled={hasReportChanges || !report.assignedToId}
-                    onClick={() => notifyVolunteer(report)}
-                    title="Pošalji obavijest volonteru"
+                    className="button button--primary button--full"
+                    disabled={!hasReportChanges}
+                    onClick={() => saveReportDraft(report, draft)}
                     type="button"
                   >
-                    <Mail size={16} />
-                    Volonter
+                    <Save size={16} />
+                    Spremi
                   </button>
+                </div>
+                <div className="notify-row">
                   <button
                     className={`button button--notify ${report.regionId ? "button--success" : "button--quiet"}`}
                     disabled={hasReportChanges || !report.regionId}
@@ -1132,19 +1149,16 @@ export default function AdminPage() {
                     <Mail size={16} />
                     Grupa
                   </button>
-                  <div className="report-actions__save">
-                    {reportFeedback[report.id] ? (
-                      <span className="admin-feedback">{reportFeedback[report.id]}</span>
-                    ) : null}
-                    <button
-                      className="button button--primary"
-                      disabled={!hasReportChanges}
-                      onClick={() => saveReportDraft(report, draft)}
-                      type="button"
-                    >
-                      Spremi
-                    </button>
-                  </div>
+                  <button
+                    className={`button button--notify ${report.assignedToId ? "button--success" : "button--quiet"}`}
+                    disabled={hasReportChanges || !report.assignedToId}
+                    onClick={() => notifyVolunteer(report)}
+                    title="Pošalji obavijest volonteru"
+                    type="button"
+                  >
+                    <Mail size={16} />
+                    Volonter
+                  </button>
                 </div>
                 <label className="comment-field">
                   Komentar
@@ -1163,7 +1177,8 @@ export default function AdminPage() {
                           <li key={`${notification.id}-sent`}>
                             <span>{formatNotificationTime(notification.createdAt)}</span>
                             <small>
-                              {notificationStatusLabel(notification.status)} - {notification.recipientName}
+                              {notificationStatusLabel(notification.status)}
+                              {notificationChannelLabel(notification.subject)} - {notification.recipientName}
                             </small>
                           </li>,
                         ];

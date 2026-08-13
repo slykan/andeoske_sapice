@@ -1043,16 +1043,27 @@ legend {
 
 .report-actions {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  gap: 8px;
   grid-column: 1 / -1;
-  justify-content: space-between;
 }
 
 .report-actions .button {
   align-items: center;
   display: inline-flex;
+  gap: 7px;
+}
+
+.notify-row {
+  display: flex;
+  gap: 10px;
+  grid-column: 1 / -1;
+}
+
+.notify-row .button {
+  align-items: center;
+  display: inline-flex;
+  flex: 1;
   gap: 7px;
 }
 
@@ -1062,11 +1073,8 @@ legend {
   padding: 0 12px;
 }
 
-.report-actions__save {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+.button--full {
+  width: 100%;
 }
 
 .comment-field {
@@ -1469,16 +1477,18 @@ legend {
     grid-template-columns: 1fr;
   }
 
-  .report-actions,
-  .report-actions__save {
+  .report-actions {
     align-items: stretch;
-    flex-direction: column;
     width: 100%;
   }
 
   .report-actions .button {
     justify-content: center;
     width: 100%;
+  }
+
+  .notify-row {
+    flex-direction: column;
   }
 
   .notification-log li,
