@@ -31,6 +31,8 @@ const defaultSubcategories: Record<string, string[]> = {
 };
 
 const urgencies = ["Visoka", "Srednja", "Niska"];
+const maxImageEdge = 1920;
+const imageQuality = 0.82;
 
 type Report = {
   id: string;
@@ -60,6 +62,87 @@ type ApiCategoriesResponse = {
   subcategories?: Record<string, string[]>;
 };
 
+function extensionlessName(fileName: string) {
+  return fileName.replace(/\.[^.]+$/, "") || "fotografija";
+}
+
+function dataUrlFromBlob(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function imageElementFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Image could not be loaded."));
+    };
+    image.src = url;
+  });
+}
+
+async function resizedImageUpload(file: File): Promise<ReportUpload> {
+  const image = await imageElementFromFile(file);
+  const ratio = Math.min(1, maxImageEdge / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+  const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Canvas is not available.");
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => {
+        if (!result) {
+          reject(new Error("Image could not be resized."));
+          return;
+        }
+        resolve(result);
+      },
+      "image/jpeg",
+      imageQuality,
+    );
+  });
+
+  return {
+    dataUrl: await dataUrlFromBlob(blob),
+    fileName: `${extensionlessName(file.name)}.jpg`,
+    mimeType: "image/jpeg",
+    byteSize: blob.size,
+  };
+}
+
+async function fileUpload(file: File): Promise<ReportUpload> {
+  if (file.type.startsWith("image/")) {
+    return resizedImageUpload(file);
+  }
+
+  return {
+    dataUrl: await dataUrlFromBlob(file),
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    byteSize: file.size,
+  };
+}
+
 export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
   const [subcategories, setSubcategories] =
@@ -78,23 +161,7 @@ export default function Home() {
   const [formStartedAt, setFormStartedAt] = useState(0);
 
   async function readUploads(files: File[]): Promise<ReportUpload[]> {
-    return Promise.all(
-      files.map(
-        (file) =>
-          new Promise<ReportUpload>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () =>
-              resolve({
-                dataUrl: String(reader.result || ""),
-                fileName: file.name,
-                mimeType: file.type || "application/octet-stream",
-                byteSize: file.size,
-              });
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-          }),
-      ),
-    );
+    return Promise.all(files.map(fileUpload));
   }
 
   function handleAttachmentChange(files: FileList | null) {
@@ -133,7 +200,9 @@ export default function Home() {
     const form = event.currentTarget;
     const data = new FormData(form);
     const flags = data.getAll("flags").map(String);
-    const oversizedAttachment = selectedAttachments.find((file) => file.size > 8 * 1024 * 1024);
+    const oversizedAttachment = selectedAttachments.find(
+      (file) => !file.type.startsWith("image/") && file.size > 8 * 1024 * 1024,
+    );
 
     if (oversizedAttachment) {
       setFormFeedback({
@@ -144,6 +213,15 @@ export default function Home() {
     }
 
     const uploads = await readUploads(selectedAttachments);
+    const oversizedUpload = uploads.find((upload) => upload.byteSize > 8 * 1024 * 1024);
+
+    if (oversizedUpload) {
+      setFormFeedback({
+        message: `Privitak "${oversizedUpload.fileName}" je i nakon obrade veći od 8 MB.`,
+        type: "error",
+      });
+      return;
+    }
     const report: Report = {
       id: "",
       category: String(data.get("category") || "Pas na lancu"),
