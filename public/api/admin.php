@@ -150,7 +150,7 @@ function nullableId(PDO $db, array $data, string $key, string $table): ?string
 function listAdminData(PDO $db): void
 {
     $regions = $db->query(
-        'SELECT `id`, `name` FROM `Region` ORDER BY `name` ASC'
+        'SELECT `id`, `name` FROM `Region` WHERE `isActive` = 1 ORDER BY `name` ASC'
     )->fetchAll();
 
     $organizations = $db->query(
@@ -164,6 +164,7 @@ function listAdminData(PDO $db): void
             r.`name` AS `regionName`
          FROM `Organization` o
          LEFT JOIN `Region` r ON r.`id` = o.`regionId`
+         WHERE o.`isActive` = 1
          ORDER BY o.`name` ASC'
     )->fetchAll();
 
@@ -181,6 +182,7 @@ function listAdminData(PDO $db): void
          FROM `User` u
          LEFT JOIN `Region` r ON r.`id` = u.`regionId`
          LEFT JOIN `Organization` o ON o.`id` = u.`organizationId`
+         WHERE u.`isActive` = 1
          ORDER BY FIELD(u.`role`, "ADMIN", "VOLUNTEER", "ORGANIZATION", "REPORTER"), u.`name`, u.`email`'
     )->fetchAll();
 
@@ -202,9 +204,9 @@ function createRegion(PDO $db, array $data): void
 
     try {
         $statement = $db->prepare(
-            'INSERT INTO `Region` (`id`, `name`, `createdAt`, `updatedAt`)
+             'INSERT INTO `Region` (`id`, `name`, `createdAt`, `updatedAt`)
              VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE `updatedAt` = VALUES(`updatedAt`)'
+             ON DUPLICATE KEY UPDATE `isActive` = 1, `updatedAt` = VALUES(`updatedAt`)'
         );
         $statement->execute([makeId('reg'), $name, $now, $now]);
     } catch (Throwable) {
@@ -269,11 +271,163 @@ function createUser(PDO $db, array $data): void
                 `role` = VALUES(`role`),
                 `regionId` = VALUES(`regionId`),
                 `organizationId` = VALUES(`organizationId`),
+                `isActive` = 1,
                 `updatedAt` = VALUES(`updatedAt`)'
         );
         $statement->execute([makeId('usr'), $email, $name, $phone, $role, $regionId, $organizationId, $now, $now]);
     } catch (Throwable) {
         respond(500, ['error' => 'Could not save user.']);
+    }
+
+    listAdminData($db);
+}
+
+function requiredId(array $data): string
+{
+    $id = nullableString($data, 'id');
+    if ($id === null) {
+        respond(422, ['error' => 'Entity id is required.']);
+    }
+
+    return $id;
+}
+
+function updateRegion(PDO $db, array $data): void
+{
+    $id = requiredId($data);
+    $name = nullableString($data, 'name', 80);
+    if ($name === null) {
+        respond(422, ['error' => 'Region name is required.']);
+    }
+
+    try {
+        $statement = $db->prepare('UPDATE `Region` SET `name` = ?, `updatedAt` = ? WHERE `id` = ? AND `isActive` = 1');
+        $statement->execute([$name, date('Y-m-d H:i:s'), $id]);
+    } catch (Throwable) {
+        respond(500, ['error' => 'Could not update region.']);
+    }
+
+    listAdminData($db);
+}
+
+function updateOrganization(PDO $db, array $data): void
+{
+    $id = requiredId($data);
+    $name = nullableString($data, 'name', 120);
+    if ($name === null) {
+        respond(422, ['error' => 'Organization name is required.']);
+    }
+
+    $regionId = nullableId($db, $data, 'regionId', 'Region');
+    $email = nullableString($data, 'email', 190);
+    $phone = nullableString($data, 'phone', 80);
+    $city = nullableString($data, 'city', 120);
+
+    try {
+        $statement = $db->prepare(
+            'UPDATE `Organization`
+             SET `name` = ?, `email` = ?, `phone` = ?, `city` = ?, `regionId` = ?, `updatedAt` = ?
+             WHERE `id` = ? AND `isActive` = 1'
+        );
+        $statement->execute([$name, $email, $phone, $city, $regionId, date('Y-m-d H:i:s'), $id]);
+    } catch (Throwable) {
+        respond(500, ['error' => 'Could not update organization.']);
+    }
+
+    listAdminData($db);
+}
+
+function updateUser(PDO $db, array $data): void
+{
+    $id = requiredId($data);
+    $email = nullableString($data, 'email', 190);
+    $name = nullableString($data, 'name', 120);
+    $role = strtoupper(trim((string) ($data['role'] ?? 'VOLUNTEER')));
+
+    if ($email === null || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        respond(422, ['error' => 'Valid email is required.']);
+    }
+
+    if (!in_array($role, USER_ROLES, true)) {
+        respond(422, ['error' => 'Invalid user role.']);
+    }
+
+    $regionId = nullableId($db, $data, 'regionId', 'Region');
+    $organizationId = nullableId($db, $data, 'organizationId', 'Organization');
+    $phone = nullableString($data, 'phone', 80);
+
+    try {
+        $statement = $db->prepare(
+            'UPDATE `User`
+             SET `email` = ?, `name` = ?, `phone` = ?, `role` = ?, `regionId` = ?, `organizationId` = ?, `updatedAt` = ?
+             WHERE `id` = ? AND `isActive` = 1'
+        );
+        $statement->execute([$email, $name, $phone, $role, $regionId, $organizationId, date('Y-m-d H:i:s'), $id]);
+    } catch (Throwable) {
+        respond(500, ['error' => 'Could not update user.']);
+    }
+
+    listAdminData($db);
+}
+
+function deleteRegion(PDO $db, array $data): void
+{
+    $id = requiredId($data);
+    $now = date('Y-m-d H:i:s');
+
+    try {
+        $db->beginTransaction();
+        $db->prepare('UPDATE `Report` SET `regionId` = NULL, `updatedAt` = ? WHERE `regionId` = ?')->execute([$now, $id]);
+        $db->prepare('UPDATE `Organization` SET `regionId` = NULL, `updatedAt` = ? WHERE `regionId` = ?')->execute([$now, $id]);
+        $db->prepare('UPDATE `User` SET `regionId` = NULL, `updatedAt` = ? WHERE `regionId` = ?')->execute([$now, $id]);
+        $db->prepare('UPDATE `Region` SET `isActive` = 0, `updatedAt` = ? WHERE `id` = ?')->execute([$now, $id]);
+        $db->commit();
+    } catch (Throwable) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        respond(500, ['error' => 'Could not delete region.']);
+    }
+
+    listAdminData($db);
+}
+
+function deleteOrganization(PDO $db, array $data): void
+{
+    $id = requiredId($data);
+    $now = date('Y-m-d H:i:s');
+
+    try {
+        $db->beginTransaction();
+        $db->prepare('UPDATE `Report` SET `organizationId` = NULL, `updatedAt` = ? WHERE `organizationId` = ?')->execute([$now, $id]);
+        $db->prepare('UPDATE `User` SET `organizationId` = NULL, `updatedAt` = ? WHERE `organizationId` = ?')->execute([$now, $id]);
+        $db->prepare('UPDATE `Organization` SET `isActive` = 0, `updatedAt` = ? WHERE `id` = ?')->execute([$now, $id]);
+        $db->commit();
+    } catch (Throwable) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        respond(500, ['error' => 'Could not delete organization.']);
+    }
+
+    listAdminData($db);
+}
+
+function deleteUser(PDO $db, array $data): void
+{
+    $id = requiredId($data);
+    $now = date('Y-m-d H:i:s');
+
+    try {
+        $db->beginTransaction();
+        $db->prepare('UPDATE `Report` SET `assignedToId` = NULL, `updatedAt` = ? WHERE `assignedToId` = ?')->execute([$now, $id]);
+        $db->prepare('UPDATE `User` SET `isActive` = 0, `updatedAt` = ? WHERE `id` = ?')->execute([$now, $id]);
+        $db->commit();
+    } catch (Throwable) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        respond(500, ['error' => 'Could not delete user.']);
     }
 
     listAdminData($db);
@@ -367,7 +521,37 @@ if ($method === 'PATCH') {
         assignReport($db, $data);
     }
 
+    if (($data['type'] ?? '') === 'region') {
+        updateRegion($db, $data);
+    }
+
+    if (($data['type'] ?? '') === 'organization') {
+        updateOrganization($db, $data);
+    }
+
+    if (($data['type'] ?? '') === 'user') {
+        updateUser($db, $data);
+    }
+
     respond(422, ['error' => 'Unsupported admin update type.']);
+}
+
+if ($method === 'DELETE') {
+    $data = readJson();
+
+    if (($data['type'] ?? '') === 'region') {
+        deleteRegion($db, $data);
+    }
+
+    if (($data['type'] ?? '') === 'organization') {
+        deleteOrganization($db, $data);
+    }
+
+    if (($data['type'] ?? '') === 'user') {
+        deleteUser($db, $data);
+    }
+
+    respond(422, ['error' => 'Unsupported admin delete type.']);
 }
 
 respond(405, ['error' => 'Method not allowed.']);

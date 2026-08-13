@@ -58,11 +58,13 @@ model User {
   assignedReports Report[]              @relation("ReportAssignedTo")
   statusChanges   ReportStatusHistory[]
   fieldNotes      FieldNote[]
+  isActive        Boolean               @default(true)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
   @@index([organizationId])
   @@index([regionId])
+  @@index([isActive])
 }
 
 model Region {
@@ -71,8 +73,11 @@ model Region {
   users         User[]
   organizations Organization[]
   reports       Report[]
+  isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+
+  @@index([isActive])
 }
 
 model Organization {
@@ -85,10 +90,12 @@ model Organization {
   region    Region?  @relation(fields: [regionId], references: [id])
   users     User[]
   reports   Report[]
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([regionId])
+  @@index([isActive])
 }
 
 model ReportCategory {
