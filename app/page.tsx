@@ -384,6 +384,7 @@ export default function Home() {
             <div>
               <a href="#prijava">Prijava</a>
               <a href={`${basePath}/privatnost`}>Privatnost</a>
+              <a href={`${basePath}/kontakt`}>Kontakt</a>
               <a href={`${basePath}/admin`}>Admin</a>
             </div>
           </nav>
@@ -452,7 +453,7 @@ export default function Home() {
           </label>
           <input name="formStartedAt" type="hidden" value={formStartedAt} />
           <label>
-            Kategorija
+            Kategorija <span className="required-mark">*</span>
             <select
               name="category"
               onChange={(event) => setSelectedCategory(event.target.value)}
@@ -477,7 +478,7 @@ export default function Home() {
             </fieldset>
           ) : null}
           <label>
-            Lokacija ili približno područje
+            Lokacija ili približno područje <span className="required-mark">*</span>
             <div className="field-with-icon">
               <MapPin size={18} />
               <input
@@ -497,7 +498,7 @@ export default function Home() {
             {locationFeedback ? <small className="field-note">{locationFeedback}</small> : null}
           </label>
           <label>
-            Opis nepravilnosti
+            Opis nepravilnosti <span className="required-mark">*</span>
             <textarea
               name="description"
               placeholder="Opis uvjeta, trajanje problema, vidljive ozljede..."
@@ -534,11 +535,11 @@ export default function Home() {
           ) : null}
           <div className="form-grid">
             <label>
-              Vrsta životinje
+              Vrsta životinje <span className="required-mark">*</span>
               <input name="animal" placeholder="Pas, mačka, drugo..." required />
             </label>
             <label>
-              Hitnost
+              Hitnost <span className="required-mark">*</span>
               <select defaultValue="Visoka" name="urgency" required>
                 {urgencies.map((urgency) => (
                   <option key={urgency}>{urgency}</option>
@@ -548,11 +549,11 @@ export default function Home() {
           </div>
           <div className="form-grid">
             <label>
-              Email
+              Email <span className="required-mark">*</span>
               <input name="reporterEmail" placeholder="ime@email.hr" required type="email" />
             </label>
             <label>
-              Kontakt telefon
+              Kontakt telefon <span className="required-mark">*</span>
               <input name="reporterPhone" placeholder="+385..." required type="tel" />
             </label>
           </div>

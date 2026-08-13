@@ -20,6 +20,7 @@ export default function PrivatnostPage() {
           </a>
           <div>
             <a href={`${basePath}/#prijava`}>Prijava</a>
+            <a href={`${basePath}/kontakt`}>Kontakt</a>
             <a href={`${basePath}/admin`}>Admin</a>
           </div>
         </nav>
