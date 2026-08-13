@@ -856,6 +856,19 @@ legend {
   overflow: hidden;
 }
 
+.report-card__description {
+  color: var(--muted);
+  display: -webkit-box;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.report-card__place-raw {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .attachment-grid {
   display: grid;
   gap: 8px;
@@ -936,7 +949,7 @@ legend {
 .map-preview {
   border: 1px solid var(--line);
   border-radius: 8px;
-  height: 140px;
+  height: 220px;
   margin-top: 8px;
   overflow: hidden;
   position: relative;

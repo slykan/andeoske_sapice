@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2,
   CheckCircle2,
@@ -237,6 +237,33 @@ function statusHistoryText(entry: ReportStatusHistory) {
   return entry.toStatus;
 }
 
+function looksLikeCoordinateText(value: string) {
+  return /^-?\d{1,3}(\.\d+)?,\s*-?\d{1,3}(\.\d+)?$/.test(value.trim());
+}
+
+function addressFromNominatim(data: unknown): string | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as { address?: Record<string, string>; display_name?: string };
+  const address = payload.address;
+
+  if (!address) {
+    return typeof payload.display_name === "string" ? payload.display_name : null;
+  }
+
+  const street = [address.road, address.house_number].filter(Boolean).join(" ");
+  const place = address.city || address.town || address.village || address.municipality || address.county;
+  const parts = [street, place].filter(Boolean);
+
+  if (parts.length > 0) {
+    return parts.join(", ");
+  }
+
+  return typeof payload.display_name === "string" ? payload.display_name : null;
+}
+
 export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -262,6 +289,8 @@ export default function AdminPage() {
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
   const [regionFilter, setRegionFilter] = useState("Sve regije");
   const [reportPage, setReportPage] = useState(1);
+  const [resolvedPlaces, setResolvedPlaces] = useState<Record<string, string>>({});
+  const attemptedPlaceLookups = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     loadSession();
@@ -716,6 +745,62 @@ export default function AdminPage() {
     return visibleReports.slice(start, start + reportsPerPage);
   }, [visibleReports, reportPage]);
 
+  useEffect(() => {
+    const targets = pagedReports.filter((report) => {
+      if (report.latitude === null || report.longitude === null) {
+        return false;
+      }
+      if (!looksLikeCoordinateText(report.place)) {
+        return false;
+      }
+      const key = `${report.latitude},${report.longitude}`;
+      return !attemptedPlaceLookups.current.has(key);
+    });
+
+    if (targets.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function resolveTargets() {
+      for (const report of targets) {
+        if (cancelled) {
+          return;
+        }
+
+        const key = `${report.latitude},${report.longitude}`;
+        attemptedPlaceLookups.current.add(key);
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${report.latitude}&lon=${report.longitude}&addressdetails=1&accept-language=hr`,
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const address = addressFromNominatim(data);
+            if (address && !cancelled) {
+              setResolvedPlaces((current) => ({ ...current, [key]: address }));
+            }
+          }
+        } catch {
+          // Ignore lookup failures; raw coordinates remain the fallback display.
+        }
+
+        if (!cancelled) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+    }
+
+    resolveTargets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pagedReports]);
+
   const statusCounts = useMemo(() => {
     return statuses.map((status) => ({
       status,
@@ -867,6 +952,11 @@ export default function AdminPage() {
               const selectedAssigneeId = reportVolunteers.some((user) => user.id === draft.assignedToId)
                 ? draft.assignedToId
                 : "";
+              const placeKey =
+                report.latitude !== null && report.longitude !== null
+                  ? `${report.latitude},${report.longitude}`
+                  : null;
+              const shownPlace = (placeKey && resolvedPlaces[placeKey]) || report.place;
 
               return (
               <article className="report-card report-card--ops" key={report.id}>
@@ -881,6 +971,7 @@ export default function AdminPage() {
                     {report.flags.length ? ` - ${report.flags.join(", ")}` : ""}
                     {report.anonymous ? " - anonimno" : ""}
                   </small>
+                  <small className="report-card__description">{report.description}</small>
                   {report.attachments.length > 0 ? (
                     <div className="attachment-grid attachment-grid--summary">
                       {report.attachments.map((attachment) => (
@@ -912,8 +1003,10 @@ export default function AdminPage() {
                   ) : null}
                 </div>
                 <div className="report-card__place">
-                  <span>{report.place}</span>
-                  <small>{report.description}</small>
+                  <span>{shownPlace}</span>
+                  {shownPlace !== report.place ? (
+                    <small className="report-card__place-raw">{report.place}</small>
+                  ) : null}
                   {report.latitude !== null && report.longitude !== null ? (
                     <div className="map-preview">
                       <iframe
