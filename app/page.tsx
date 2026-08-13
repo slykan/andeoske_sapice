@@ -153,6 +153,7 @@ export default function Home() {
   const [formFeedback, setFormFeedback] = useState<{ message: string; type: "success" | "error" } | null>(
     null,
   );
+  const [thanksReportId, setThanksReportId] = useState("");
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -259,10 +260,8 @@ export default function Home() {
       }
 
       const result = (await response.json()) as ApiCreateResponse;
-      setFormFeedback({
-        message: `Prijava ${result.report.id} je zaprimljena.`,
-        type: "success",
-      });
+      setFormFeedback(null);
+      setThanksReportId(result.report.id);
       form.reset();
       setSelectedCategory(categories[0] || "Pas na lancu");
       setSelectedAttachments([]);
@@ -576,6 +575,29 @@ export default function Home() {
           <p>Standardizirani PDF priprema podatke za nadležna tijela.</p>
         </article>
       </section>
+
+      {thanksReportId ? (
+        <div className="thanks-modal" onClick={() => setThanksReportId("")} role="presentation">
+          <div className="thanks-modal__card" onClick={(event) => event.stopPropagation()}>
+            <div className="thanks-modal__heart" aria-hidden="true">
+              <HeartHandshake size={34} />
+            </div>
+            <span>Prijava {thanksReportId} je zaprimljena</span>
+            <h2>Hvala ti što si reagirao/la.</h2>
+            <p>
+              Svaka prijava može biti prvi korak prema sigurnijem životu za životinju
+              koja ne može sama zatražiti pomoć. Životinje to možda ne mogu reći riječima,
+              ali ovakva pažnja im zaista znači.
+            </p>
+            <p>
+              Pregledat ćemo prijavu u najkraćem mogućem roku i poduzeti potrebne korake.
+            </p>
+            <button className="button button--primary" onClick={() => setThanksReportId("")} type="button">
+              Zatvori
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -429,6 +429,83 @@ legend {
   color: #8c321f;
 }
 
+.thanks-modal {
+  align-items: center;
+  background: rgba(28, 24, 18, 0.58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 22px;
+  position: fixed;
+  z-index: 40;
+}
+
+.thanks-modal__card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(28, 24, 18, 0.28);
+  display: grid;
+  gap: 12px;
+  max-width: 520px;
+  padding: 28px;
+  text-align: center;
+}
+
+.thanks-modal__heart {
+  align-items: center;
+  animation: heartbeat 1.2s ease-in-out infinite;
+  background: #f8ded7;
+  border-radius: 50%;
+  color: var(--coral);
+  display: inline-flex;
+  height: 74px;
+  justify-content: center;
+  justify-self: center;
+  width: 74px;
+}
+
+.thanks-modal__card span {
+  color: var(--green);
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.thanks-modal__card h2 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.thanks-modal__card p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.thanks-modal__card .button {
+  justify-self: center;
+  margin-top: 4px;
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  18% {
+    transform: scale(1.12);
+  }
+
+  32% {
+    transform: scale(0.96);
+  }
+
+  48% {
+    transform: scale(1.08);
+  }
+}
+
 .workspace--split {
   display: grid;
   gap: 24px;
