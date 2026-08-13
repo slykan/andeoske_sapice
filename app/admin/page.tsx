@@ -31,7 +31,12 @@ const statuses = [
 ];
 
 const urgencies = ["Visoka", "Srednja", "Niska"];
-const userRoles = ["VOLUNTEER", "ADMIN", "ORGANIZATION", "REPORTER"];
+const userRoles = [
+  { value: "ADMIN", label: "Admin" },
+  { value: "ORGANIZATION", label: "Grupa ili udruga" },
+  { value: "VOLUNTEER", label: "Volonter" },
+  { value: "REPORTER", label: "Reporter" },
+];
 type AdminView = "reports" | "users";
 
 type Report = {
@@ -45,6 +50,7 @@ type Report = {
   reporterEmail: string | null;
   reporterPhone: string | null;
   wantsResolutionNotice: boolean;
+  comment: string | null;
   flags: string[];
   anonymous: boolean;
   latitude: number | null;
@@ -131,6 +137,7 @@ type ReportDraft = {
   regionId: string;
   organizationId: string;
   assignedToId: string;
+  comment: string;
 };
 
 function mapUrl(latitude: number, longitude: number) {
@@ -521,6 +528,7 @@ export default function AdminPage() {
         regionId: report.regionId || "",
         organizationId: report.organizationId || "",
         assignedToId: report.assignedToId || "",
+        comment: report.comment || "",
       }
     );
   }
@@ -530,7 +538,8 @@ export default function AdminPage() {
       draft.status !== report.status ||
       draft.regionId !== (report.regionId || "") ||
       draft.organizationId !== (report.organizationId || "") ||
-      draft.assignedToId !== (report.assignedToId || "")
+      draft.assignedToId !== (report.assignedToId || "") ||
+      draft.comment !== (report.comment || "")
     );
   }
 
@@ -543,6 +552,7 @@ export default function AdminPage() {
           regionId: report.regionId || "",
           organizationId: report.organizationId || "",
           assignedToId: report.assignedToId || "",
+          comment: report.comment || "",
         }),
         [field]: value,
       };
@@ -581,6 +591,7 @@ export default function AdminPage() {
         regionId: draft.regionId,
         organizationId: draft.organizationId,
         assignedToId: draft.assignedToId,
+        comment: draft.comment,
       }),
     });
 
@@ -967,8 +978,16 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
-                <div className="notification-log">
-                  <strong>Obavijesti</strong>
+                <label className="comment-field">
+                  Komentar
+                  <textarea
+                    onChange={(event) => updateReportDraft(report, "comment", event.target.value)}
+                    placeholder="Interna bilješka o ovom slučaju..."
+                    value={draft.comment}
+                  />
+                </label>
+                <details className="notification-log">
+                  <summary>Obavijesti</summary>
                   {report.notifications.length > 0 ? (
                     <ol>
                       {report.notifications.flatMap((notification) => {
@@ -1007,9 +1026,9 @@ export default function AdminPage() {
                   ) : (
                     <small>Još nema poslanih obavijesti.</small>
                   )}
-                </div>
-                <div className="status-history-log">
-                  <strong>Status log</strong>
+                </details>
+                <details className="status-history-log">
+                  <summary>Status log</summary>
                   {report.statusHistory.length > 0 ? (
                     <ol>
                       {report.statusHistory.map((entry) => (
@@ -1024,7 +1043,7 @@ export default function AdminPage() {
                   ) : (
                     <small>Još nema promjena statusa.</small>
                   )}
-                </div>
+                </details>
               </article>
               );
             })}
@@ -1275,8 +1294,8 @@ export default function AdminPage() {
               <div className="form-grid form-grid--compact">
                 <select aria-label="Uloga korisnika" name="role" defaultValue={editingUser?.role || "VOLUNTEER"}>
                   {userRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
+                    <option key={role.value} value={role.value}>
+                      {role.label}
                     </option>
                   ))}
                 </select>

@@ -1049,6 +1049,14 @@ legend {
   justify-content: flex-end;
 }
 
+.comment-field {
+  grid-column: 1 / -1;
+}
+
+.comment-field textarea {
+  min-height: 64px;
+}
+
 .notification-log,
 .status-history-log {
   background: #fbfaf7;
@@ -1060,10 +1068,17 @@ legend {
   padding: 10px 12px;
 }
 
-.notification-log strong,
-.status-history-log strong {
+.notification-log summary,
+.status-history-log summary {
   color: var(--ink);
+  cursor: pointer;
   font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.notification-log[open] summary,
+.status-history-log[open] summary {
+  margin-bottom: 4px;
 }
 
 .notification-log ol,

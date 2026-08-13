@@ -898,6 +898,7 @@ function assignReport(PDO $db, array $data): void
     $organizationId = nullableId($db, $data, 'organizationId', 'Organization');
     $assignedToId = nullableId($db, $data, 'assignedToId', 'User');
     $status = REPORT_STATUSES[(string) ($data['status'] ?? '')] ?? null;
+    $comment = nullableString($data, 'comment', 5000);
     $now = date('Y-m-d H:i:s');
 
     if ($status === null) {
@@ -942,7 +943,7 @@ function assignReport(PDO $db, array $data): void
 
         $statement = $db->prepare(
             'UPDATE `Report`
-             SET `regionId` = ?, `organizationId` = ?, `assignedToId` = ?, `status` = ?, `updatedAt` = ?, `closedAt` = ?
+             SET `regionId` = ?, `organizationId` = ?, `assignedToId` = ?, `status` = ?, `comment` = ?, `updatedAt` = ?, `closedAt` = ?
              WHERE `id` = ?'
         );
         $statement->execute([
@@ -950,6 +951,7 @@ function assignReport(PDO $db, array $data): void
             $organizationId,
             $assignedToId,
             $status,
+            $comment,
             $now,
             $status === 'CLOSED' ? $now : null,
             $report['id'],
