@@ -618,10 +618,26 @@ export default function AdminPage() {
         <section className="admin-login">
           <a href={`${basePath}/`}>Anđeoske šapice</a>
           <h1>Admin prijava</h1>
-          <form className="login-form" onSubmit={login}>
+          <form autoComplete="on" className="login-form" onSubmit={login}>
+            <label className="password-manager-field">
+              Korisnik
+              <input
+                autoComplete="username"
+                name="username"
+                readOnly
+                tabIndex={-1}
+                type="text"
+                value="admin"
+              />
+            </label>
             <label>
               Lozinka
-              <input name="password" placeholder="Admin lozinka" type="password" />
+              <input
+                autoComplete="current-password"
+                name="password"
+                placeholder="Admin lozinka"
+                type="password"
+              />
             </label>
             <button className="button button--primary" type="submit">
               Prijava
