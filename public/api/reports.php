@@ -117,6 +117,184 @@ function readJson(): array
     return $data;
 }
 
+function cleanMailHeader(string $value): string
+{
+    return trim(str_replace(["\r", "\n"], '', $value));
+}
+
+function escapeHtml(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function reportMapsUrl(array $report): ?string
+{
+    if (is_numeric($report['latitude'] ?? null) && is_numeric($report['longitude'] ?? null)) {
+        return 'https://www.google.com/maps?q=' . $report['latitude'] . ',' . $report['longitude'];
+    }
+
+    return null;
+}
+
+function sendAdminNewReportMail(array $report, string $recipientName, string $recipientEmail): bool
+{
+    $env = loadEnv();
+    $from = cleanMailHeader((string) (
+        $env['MAIL_FROM']
+        ?? $env['EMAIL_FROM']
+        ?? $env['SMTP_USER']
+        ?? getenv('MAIL_FROM')
+        ?: getenv('EMAIL_FROM')
+        ?: getenv('SMTP_USER')
+        ?: 'noreply@andeoske-sapice.app'
+    ));
+    $replyTo = cleanMailHeader((string) ($env['MAIL_REPLY_TO'] ?? getenv('MAIL_REPLY_TO') ?: $from));
+    $host = cleanMailHeader((string) ($_SERVER['HTTP_HOST'] ?? 'andeoske-sapice.app'));
+    $adminUrl = "https://{$host}/admin";
+    $subject = 'Nova prijava ' . $report['publicCode'];
+    $urgencyLabel = [
+        'LOW' => 'Niska',
+        'MEDIUM' => 'Srednja',
+        'HIGH' => 'Visoka',
+    ][$report['urgency'] ?? ''] ?? 'Srednja';
+    $mapsUrl = reportMapsUrl($report);
+
+    $textBody = implode("\n", array_filter([
+        "Pozdrav {$recipientName},",
+        '',
+        'Zaprimljena je nova prijava u sustavu Andeoske sapice.',
+        '',
+        'Broj prijave: ' . $report['publicCode'],
+        'Hitnost: ' . $urgencyLabel,
+        'Kategorija: ' . $report['category'],
+        'Lokacija: ' . $report['locationText'],
+        $mapsUrl ? 'Karta: ' . $mapsUrl : null,
+        'Opis: ' . $report['description'],
+        '',
+        'Admin: ' . $adminUrl,
+        '',
+        'Ova obavijest je poslana automatski jer imas ulogu admina.',
+    ], static fn ($line) => $line !== null));
+
+    $safeName = escapeHtml($recipientName);
+    $safeCode = escapeHtml($report['publicCode']);
+    $safeUrgency = escapeHtml($urgencyLabel);
+    $safeCategory = escapeHtml($report['category']);
+    $safeLocation = escapeHtml($report['locationText']);
+    $safeMapsUrl = $mapsUrl ? escapeHtml($mapsUrl) : null;
+    $locationCell = $safeMapsUrl
+        ? "<a href=\"{$safeMapsUrl}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"color:#2f5d50;text-decoration:underline;\">{$safeLocation}</a>"
+        : $safeLocation;
+    $safeDescription = nl2br(escapeHtml($report['description']));
+    $safeAdminUrl = escapeHtml($adminUrl);
+    $htmlBody = <<<HTML
+<!doctype html>
+<html lang="hr">
+  <body style="margin:0;background:#f6f2ea;color:#1f2a24;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f2ea;padding:28px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fffdf8;border:1px solid #ded6c8;border-radius:10px;overflow:hidden;">
+            <tr>
+              <td style="background:#2f5d50;color:#ffffff;padding:22px 26px;">
+                <div style="font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Andeoske sapice</div>
+                <h1 style="font-size:24px;line-height:1.2;margin:8px 0 0;">Nova prijava je zaprimljena</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 26px;">
+                <p style="font-size:16px;line-height:1.55;margin:0 0 18px;">Pozdrav {$safeName},</p>
+                <p style="font-size:16px;line-height:1.55;margin:0 0 22px;">U sustavu je zaprimljena nova prijava. Pregledaj detalje i dodijeli je volonteru ili udruzi.</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 22px;">
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Broj prijave</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeCode}</td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Hitnost</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeUrgency}</td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Kategorija</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeCategory}</td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Lokacija</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$locationCell}</td>
+                  </tr>
+                </table>
+                <div style="background:#f6f2ea;border:1px solid #e6ded1;border-radius:8px;padding:14px 16px;margin:0 0 24px;">
+                  <div style="color:#6a5f53;font-size:13px;font-weight:700;margin-bottom:6px;">Opis</div>
+                  <div style="font-size:15px;line-height:1.55;">{$safeDescription}</div>
+                </div>
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 18px;">
+                  <tr>
+                    <td style="padding:0 10px 10px 0;">
+                      <a href="{$safeAdminUrl}" style="background:#2f5d50;border-radius:7px;color:#ffffff;display:inline-block;font-size:15px;font-weight:700;padding:12px 18px;text-decoration:none;">Otvori admin</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f6f2ea;color:#6a5f53;font-size:12px;line-height:1.45;padding:14px 26px;">
+                Ova obavijest je poslana automatski jer imas ulogu admina.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+HTML;
+
+    $boundary = 'andeoske_' . bin2hex(random_bytes(12));
+    $body = implode("\r\n", [
+        "--{$boundary}",
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        $textBody,
+        "--{$boundary}",
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        $htmlBody,
+        "--{$boundary}--",
+    ]);
+
+    $headers = implode("\r\n", [
+        "From: Andeoske Sapice <{$from}>",
+        "Reply-To: {$replyTo}",
+        'MIME-Version: 1.0',
+        "Content-Type: multipart/alternative; boundary=\"{$boundary}\"",
+    ]);
+
+    return (bool) @mail($recipientEmail, $subject, $body, $headers);
+}
+
+function notifyAdminsOfNewReport(PDO $db, array $report): void
+{
+    try {
+        $admins = $db->query(
+            "SELECT `email`, `name` FROM `User` WHERE `isActive` = 1 AND `role` = 'ADMIN'"
+        )->fetchAll();
+    } catch (Throwable) {
+        return;
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) ($admin['email'] ?? ''));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            continue;
+        }
+
+        $name = trim((string) ($admin['name'] ?? '')) ?: $email;
+        sendAdminNewReportMail($report, $name, $email);
+    }
+}
+
 function clientIp(): string
 {
     $candidates = [
@@ -809,6 +987,16 @@ function createReport(PDO $db): void
         }
         respond(500, ['error' => 'Could not save report.']);
     }
+
+    notifyAdminsOfNewReport($db, [
+        'publicCode' => $publicCode,
+        'category' => $category,
+        'description' => $description,
+        'locationText' => $place,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'urgency' => $urgency,
+    ]);
 
     respond(201, [
         'report' => [
