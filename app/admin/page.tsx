@@ -87,6 +87,13 @@ type CategoriesData = {
   subcategories?: Record<string, string[]>;
 };
 
+type ReportDraft = {
+  status: string;
+  regionId: string;
+  organizationId: string;
+  assignedToId: string;
+};
+
 function mapUrl(latitude: number, longitude: number) {
   return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
 }
@@ -129,6 +136,8 @@ export default function AdminPage() {
   const [loginFeedback, setLoginFeedback] = useState("");
   const [categoryFeedback, setCategoryFeedback] = useState("");
   const [adminFeedback, setAdminFeedback] = useState("");
+  const [reportDrafts, setReportDrafts] = useState<Record<string, ReportDraft>>({});
+  const [reportFeedback, setReportFeedback] = useState<Record<string, string>>({});
   const [selectedSubcategoryCategory, setSelectedSubcategoryCategory] = useState("");
   const [editingRegion, setEditingRegion] = useState<Region | null>(null);
   const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
@@ -170,6 +179,8 @@ export default function AdminPage() {
 
     const data = (await response.json()) as { reports: Report[] };
     setReports(Array.isArray(data.reports) ? normalizeReports(data.reports) : []);
+    setReportDrafts({});
+    setReportFeedback({});
   }
 
   async function loadCategories() {
@@ -397,68 +408,83 @@ export default function AdminPage() {
     setAdminFeedback("Zapis nije obrisan.");
   }
 
-  async function updateReportStatus(reportId: string, status: string) {
-    setReports((current) =>
-      current.map((report) => (report.id === reportId ? { ...report, status } : report)),
+  function draftForReport(report: Report): ReportDraft {
+    return (
+      reportDrafts[report.id] || {
+        status: report.status,
+        regionId: report.regionId || "",
+        organizationId: report.organizationId || "",
+        assignedToId: report.assignedToId || "",
+      }
     );
-
-    const response = await fetch(reportsApiPath, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: reportId, status }),
-    });
-
-    if (!response.ok) {
-      await loadReports();
-    }
   }
 
-  async function assignReport(report: Report, field: keyof Report, value: string) {
-    const nextReport = { ...report, [field]: value || null };
+  function reportDraftChanged(report: Report, draft: ReportDraft) {
+    return (
+      draft.status !== report.status ||
+      draft.regionId !== (report.regionId || "") ||
+      draft.organizationId !== (report.organizationId || "") ||
+      draft.assignedToId !== (report.assignedToId || "")
+    );
+  }
 
-    if (field === "regionId") {
+  function updateReportDraft(report: Report, field: keyof ReportDraft, value: string) {
+    setReportFeedback((current) => ({ ...current, [report.id]: "" }));
+    setReportDrafts((current) => {
+      const nextDraft = {
+        ...(current[report.id] || {
+          status: report.status,
+          regionId: report.regionId || "",
+          organizationId: report.organizationId || "",
+          assignedToId: report.assignedToId || "",
+        }),
+        [field]: value,
+      };
+
+      if (field === "regionId") {
       const nextRegionId = value || null;
       const organizationMatchesRegion = adminData.organizations.some(
         (organization) =>
-          organization.id === nextReport.organizationId && organization.regionId === nextRegionId,
+          organization.id === nextDraft.organizationId && organization.regionId === nextRegionId,
       );
       const assigneeMatchesRegion = volunteers.some(
-        (user) => user.id === nextReport.assignedToId && user.regionId === nextRegionId,
+        (user) => user.id === nextDraft.assignedToId && user.regionId === nextRegionId,
       );
 
       if (!organizationMatchesRegion) {
-        nextReport.organizationId = null;
+          nextDraft.organizationId = "";
       }
 
       if (!assigneeMatchesRegion) {
-        nextReport.assignedToId = null;
+          nextDraft.assignedToId = "";
+        }
       }
-    }
 
-    setReports((current) =>
-      current.map((item) =>
-        item.id === report.id ? { ...nextReport, status: "Dodijeljeno" } : item,
-      ),
-    );
+      return { ...current, [report.id]: nextDraft };
+    });
+  }
 
+  async function saveReportDraft(report: Report, draft: ReportDraft) {
     const response = await fetch(adminApiPath, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "assignment",
         reportId: report.id,
-        regionId: nextReport.regionId || "",
-        organizationId: nextReport.organizationId || "",
-        assignedToId: nextReport.assignedToId || "",
+        status: draft.status,
+        regionId: draft.regionId,
+        organizationId: draft.organizationId,
+        assignedToId: draft.assignedToId,
       }),
     });
 
     if (!response.ok) {
-      await loadReports();
+      setReportFeedback((current) => ({ ...current, [report.id]: "Nije spremljeno." }));
       return;
     }
 
     await loadReports();
+    setReportFeedback((current) => ({ ...current, [report.id]: "Spremljeno." }));
   }
 
   const volunteers = useMemo(
@@ -584,15 +610,17 @@ export default function AdminPage() {
 
           <div className="report-list">
             {visibleReports.map((report) => {
-              const reportOrganizations = organizationsForRegion(report.regionId);
-              const reportVolunteers = volunteersForRegion(report.regionId);
+              const draft = draftForReport(report);
+              const hasReportChanges = reportDraftChanged(report, draft);
+              const reportOrganizations = organizationsForRegion(draft.regionId || null);
+              const reportVolunteers = volunteersForRegion(draft.regionId || null);
               const selectedOrganizationId = reportOrganizations.some(
-                (organization) => organization.id === report.organizationId,
+                (organization) => organization.id === draft.organizationId,
               )
-                ? report.organizationId || ""
+                ? draft.organizationId
                 : "";
-              const selectedAssigneeId = reportVolunteers.some((user) => user.id === report.assignedToId)
-                ? report.assignedToId || ""
+              const selectedAssigneeId = reportVolunteers.some((user) => user.id === draft.assignedToId)
+                ? draft.assignedToId
                 : "";
 
               return (
@@ -663,8 +691,8 @@ export default function AdminPage() {
                 <label className="status-control">
                   Status
                   <select
-                    value={report.status}
-                    onChange={(event) => updateReportStatus(report.id, event.target.value)}
+                    value={draft.status}
+                    onChange={(event) => updateReportDraft(report, "status", event.target.value)}
                   >
                     {statuses.map((status) => (
                       <option key={status}>{status}</option>
@@ -675,8 +703,8 @@ export default function AdminPage() {
                   <label>
                     Regija
                     <select
-                      value={report.regionId || ""}
-                      onChange={(event) => assignReport(report, "regionId", event.target.value)}
+                      value={draft.regionId}
+                      onChange={(event) => updateReportDraft(report, "regionId", event.target.value)}
                     >
                       <option value="">Bez regije</option>
                       {adminData.regions.map((region) => (
@@ -689,11 +717,11 @@ export default function AdminPage() {
                   <label>
                     Grupa
                     <select
-                      disabled={!report.regionId}
+                      disabled={!draft.regionId}
                       value={selectedOrganizationId}
-                      onChange={(event) => assignReport(report, "organizationId", event.target.value)}
+                      onChange={(event) => updateReportDraft(report, "organizationId", event.target.value)}
                     >
-                      <option value="">{report.regionId ? "Bez grupe" : "Prvo odaberi regiju"}</option>
+                      <option value="">{draft.regionId ? "Bez grupe" : "Prvo odaberi regiju"}</option>
                       {reportOrganizations.map((organization) => (
                         <option key={organization.id} value={organization.id}>
                           {organization.name}
@@ -704,11 +732,11 @@ export default function AdminPage() {
                   <label>
                     Volonter
                     <select
-                      disabled={!report.regionId}
+                      disabled={!draft.regionId}
                       value={selectedAssigneeId}
-                      onChange={(event) => assignReport(report, "assignedToId", event.target.value)}
+                      onChange={(event) => updateReportDraft(report, "assignedToId", event.target.value)}
                     >
-                      <option value="">{report.regionId ? "Bez volontera" : "Prvo odaberi regiju"}</option>
+                      <option value="">{draft.regionId ? "Bez volontera" : "Prvo odaberi regiju"}</option>
                       {reportVolunteers.map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.name || user.email}
@@ -716,6 +744,19 @@ export default function AdminPage() {
                       ))}
                     </select>
                   </label>
+                </div>
+                <div className="report-save-row">
+                  <button
+                    className="button button--primary"
+                    disabled={!hasReportChanges}
+                    onClick={() => saveReportDraft(report, draft)}
+                    type="button"
+                  >
+                    Spremi
+                  </button>
+                  {reportFeedback[report.id] ? (
+                    <span className="admin-feedback">{reportFeedback[report.id]}</span>
+                  ) : null}
                 </div>
               </article>
               );

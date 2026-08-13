@@ -733,6 +733,14 @@ legend {
   padding-block: 7px;
 }
 
+.report-save-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
 .empty-state {
   background: var(--paper);
   border: 1px dashed var(--line);

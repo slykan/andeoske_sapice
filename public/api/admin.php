@@ -5,6 +5,14 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 const USER_ROLES = ['REPORTER', 'VOLUNTEER', 'ADMIN', 'ORGANIZATION'];
+const REPORT_STATUSES = [
+    'Zaprimljeno' => 'RECEIVED',
+    'U provjeri' => 'IN_REVIEW',
+    'Dodijeljeno' => 'ASSIGNED',
+    'Proslijeđeno' => 'FORWARDED',
+    'U tijeku' => 'IN_PROGRESS',
+    'Zaključeno' => 'CLOSED',
+];
 
 function respond(int $status, array $payload): void
 {
@@ -474,7 +482,12 @@ function assignReport(PDO $db, array $data): void
     $regionId = nullableId($db, $data, 'regionId', 'Region');
     $organizationId = nullableId($db, $data, 'organizationId', 'Organization');
     $assignedToId = nullableId($db, $data, 'assignedToId', 'User');
+    $status = REPORT_STATUSES[(string) ($data['status'] ?? '')] ?? null;
     $now = date('Y-m-d H:i:s');
+
+    if ($status === null) {
+        respond(422, ['error' => 'Valid status is required.']);
+    }
 
     if (($organizationId !== null || $assignedToId !== null) && $regionId === null) {
         respond(422, ['error' => 'Region is required before assignment.']);
@@ -509,23 +522,34 @@ function assignReport(PDO $db, array $data): void
 
         $statement = $db->prepare(
             'UPDATE `Report`
-             SET `regionId` = ?, `organizationId` = ?, `assignedToId` = ?, `status` = "ASSIGNED", `updatedAt` = ?
+             SET `regionId` = ?, `organizationId` = ?, `assignedToId` = ?, `status` = ?, `updatedAt` = ?, `closedAt` = ?
              WHERE `id` = ?'
         );
-        $statement->execute([$regionId, $organizationId, $assignedToId, $now, $report['id']]);
-
-        $statement = $db->prepare(
-            'INSERT INTO `ReportStatusHistory`
-             (`id`, `reportId`, `fromStatus`, `toStatus`, `action`, `note`, `createdAt`)
-             VALUES (?, ?, ?, "ASSIGNED", "ASSIGNED", ?, ?)'
-        );
         $statement->execute([
-            makeId('hist'),
-            $report['id'],
-            $report['status'],
-            'Prijava dodijeljena kroz admin operativni pregled.',
+            $regionId,
+            $organizationId,
+            $assignedToId,
+            $status,
             $now,
+            $status === 'CLOSED' ? $now : null,
+            $report['id'],
         ]);
+
+        if ($report['status'] !== $status) {
+            $statement = $db->prepare(
+                'INSERT INTO `ReportStatusHistory`
+                 (`id`, `reportId`, `fromStatus`, `toStatus`, `action`, `note`, `createdAt`)
+                 VALUES (?, ?, ?, ?, "STATUS_CHANGED", ?, ?)'
+            );
+            $statement->execute([
+                makeId('hist'),
+                $report['id'],
+                $report['status'],
+                $status,
+                'Status i dodjela spremljeni iz admin pregleda.',
+                $now,
+            ]);
+        }
 
         $db->commit();
     } catch (Throwable) {
