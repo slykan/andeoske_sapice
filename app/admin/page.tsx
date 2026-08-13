@@ -806,11 +806,7 @@ export default function AdminPage() {
                     type="button"
                   >
                     <Mail size={16} />
-                    {hasReportChanges
-                      ? "Prvo spremi izmjene"
-                      : report.assignedToId
-                        ? "Pošalji obavijest volonteru"
-                        : "Dodijeli volontera"}
+                    Pošalji obavijest volonteru
                   </button>
                   <div className="report-actions__save">
                     {reportFeedback[report.id] ? (
