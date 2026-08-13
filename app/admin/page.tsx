@@ -106,6 +106,7 @@ export default function AdminPage() {
   const [loginFeedback, setLoginFeedback] = useState("");
   const [categoryFeedback, setCategoryFeedback] = useState("");
   const [adminFeedback, setAdminFeedback] = useState("");
+  const [selectedSubcategoryCategory, setSelectedSubcategoryCategory] = useState("");
   const [editingRegion, setEditingRegion] = useState<Region | null>(null);
   const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -154,8 +155,12 @@ export default function AdminPage() {
   }
 
   function applyCategoriesData(data: CategoriesData) {
-    setCategories(Array.isArray(data.categories) ? data.categories : []);
+    const nextCategories = Array.isArray(data.categories) ? data.categories : [];
+    setCategories(nextCategories);
     setSubcategories(data.subcategories || {});
+    setSelectedSubcategoryCategory((current) =>
+      current && nextCategories.includes(current) ? current : "",
+    );
   }
 
   async function loadAdminData() {
@@ -250,7 +255,7 @@ export default function AdminPage() {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const category = String(data.get("subcategoryCategory") || "").trim();
+    const category = selectedSubcategoryCategory;
     const label = String(data.get("subcategoryLabel") || "").trim();
 
     if (!category || !label) {
@@ -436,6 +441,10 @@ export default function AdminPage() {
       count: reports.filter((report) => report.status === status).length,
     }));
   }, [reports]);
+
+  const visibleSubcategories = selectedSubcategoryCategory
+    ? subcategories[selectedSubcategoryCategory] || []
+    : [];
 
   if (!isAdmin) {
     return (
@@ -915,37 +924,49 @@ export default function AdminPage() {
 
             <h3>Podkategorije</h3>
             <form className="subcategory-form" onSubmit={addSubcategory}>
-              <select aria-label="Kategorija za podkategoriju" name="subcategoryCategory">
+              <select
+                aria-label="Kategorija za podkategoriju"
+                name="subcategoryCategory"
+                onChange={(event) => setSelectedSubcategoryCategory(event.target.value)}
+                value={selectedSubcategoryCategory}
+              >
+                <option value="">Odaberi kategoriju</option>
                 {categories.map((category) => (
-                  <option key={category}>{category}</option>
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
               </select>
               <input
                 aria-label="Naziv nove podkategorije"
+                disabled={!selectedSubcategoryCategory}
                 name="subcategoryLabel"
                 placeholder="Novi checkbox"
               />
-              <button className="button button--primary" type="submit">
+              <button className="button button--primary" disabled={!selectedSubcategoryCategory} type="submit">
                 <Plus size={18} />
                 Dodaj
               </button>
             </form>
-            <div className="subcategory-list">
-              {categories.map((category) =>
-                (subcategories[category] || []).map((subcategory) => (
-                  <span className="category-pill" key={`${category}-${subcategory}`}>
-                    {category}: {subcategory}
+            {selectedSubcategoryCategory ? (
+              <div className="subcategory-list">
+                {visibleSubcategories.map((subcategory) => (
+                  <span className="category-pill" key={`${selectedSubcategoryCategory}-${subcategory}`}>
+                    {subcategory}
                     <button
                       aria-label={`Obriši podkategoriju ${subcategory}`}
-                      onClick={() => deleteSubcategory(category, subcategory)}
+                      onClick={() => deleteSubcategory(selectedSubcategoryCategory, subcategory)}
                       type="button"
                     >
                       <Trash2 size={14} />
                     </button>
                   </span>
-                )),
-              )}
-            </div>
+                ))}
+                {visibleSubcategories.length === 0 ? (
+                  <p className="empty-state">Nema checkboxova za odabranu kategoriju.</p>
+                ) : null}
+              </div>
+            ) : null}
             {categoryFeedback ? (
               <p className="admin-feedback" role="status">
                 {categoryFeedback}
