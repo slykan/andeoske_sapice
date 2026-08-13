@@ -45,6 +45,7 @@ type Report = {
   description: string;
   reporterEmail: string | null;
   reporterPhone: string | null;
+  wantsResolutionNotice: boolean;
   flags: string[];
   anonymous: boolean;
   latitude: number | null;
@@ -150,6 +151,7 @@ function mapEmbedUrl(latitude: number, longitude: number) {
 function normalizeReports(reports: Report[]): Report[] {
   return reports.map((report) => ({
     ...report,
+    wantsResolutionNotice: Boolean(report.wantsResolutionNotice),
     attachments: Array.isArray(report.attachments)
       ? report.attachments.filter(
           (attachment) =>
@@ -863,6 +865,20 @@ export default function AdminPage() {
                   <div className="report-contact">
                     <small>Email: {report.reporterEmail || "Nije upisano"}</small>
                     <small>Telefon: {report.reporterPhone || "Nije upisano"}</small>
+                    <small
+                      className={`notice-preference ${
+                        report.wantsResolutionNotice
+                          ? "notice-preference--yes"
+                          : "notice-preference--no"
+                      }`}
+                    >
+                      {report.wantsResolutionNotice ? (
+                        <CheckCircle2 size={15} aria-hidden="true" />
+                      ) : (
+                        <XCircle size={15} aria-hidden="true" />
+                      )}
+                      Želi obavijest
+                    </small>
                   </div>
                 </label>
                 <div className="assignment-grid">

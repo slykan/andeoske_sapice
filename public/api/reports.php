@@ -453,6 +453,7 @@ function reportFromRow(array $row): array
         'description' => $row['description'],
         'reporterEmail' => (bool) $row['isAnonymous'] ? maskContact($row['reporterEmail']) : $row['reporterEmail'],
         'reporterPhone' => (bool) $row['isAnonymous'] ? maskContact($row['reporterPhone']) : $row['reporterPhone'],
+        'wantsResolutionNotice' => (bool) $row['wantsResolutionNotice'] && !(bool) $row['isAnonymous'],
         'flags' => flagsFromRow($row),
         'anonymous' => (bool) $row['isAnonymous'],
         'regionId' => $row['regionId'],
@@ -478,6 +479,7 @@ function listReports(PDO $db): void
             r.`description`,
             r.`reporterEmail`,
             r.`reporterPhone`,
+            r.`wantsResolutionNotice`,
             r.`locationText`,
             r.`latitude`,
             r.`longitude`,
@@ -532,6 +534,7 @@ function listReports(PDO $db): void
             r.`description`,
             r.`reporterEmail`,
             r.`reporterPhone`,
+            r.`wantsResolutionNotice`,
             r.`locationText`,
             r.`latitude`,
             r.`longitude`,
@@ -667,6 +670,7 @@ function createReport(PDO $db): void
     $reporterPhone = trim((string) ($data['reporterPhone'] ?? ''));
     $urgency = URGENCY_TO_DB[(string) ($data['urgency'] ?? 'Srednja')] ?? 'MEDIUM';
     $anonymous = !empty($data['anonymous']);
+    $wantsResolutionNotice = !$anonymous && !empty($data['wantsResolutionNotice']);
     $latitude = coordinateFromData($data, 'latitude', -90, 90);
     $longitude = coordinateFromData($data, 'longitude', -180, 180);
     $flags = selectedFlags($data);
@@ -694,8 +698,8 @@ function createReport(PDO $db): void
 
         $statement = $db->prepare(
             'INSERT INTO `Report`
-             (`id`, `publicCode`, `category`, `animalType`, `description`, `reporterEmail`, `reporterPhone`, `locationText`, `latitude`, `longitude`, `urgency`, `status`, `isAnonymous`, `createdAt`, `updatedAt`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "RECEIVED", ?, ?, ?)'
+             (`id`, `publicCode`, `category`, `animalType`, `description`, `reporterEmail`, `reporterPhone`, `wantsResolutionNotice`, `locationText`, `latitude`, `longitude`, `urgency`, `status`, `isAnonymous`, `createdAt`, `updatedAt`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "RECEIVED", ?, ?, ?)'
         );
         $statement->execute([
             $reportId,
@@ -705,6 +709,7 @@ function createReport(PDO $db): void
             $description,
             $reporterEmail,
             $reporterPhone,
+            $wantsResolutionNotice ? 1 : 0,
             $place,
             $latitude,
             $longitude,
@@ -774,6 +779,7 @@ function createReport(PDO $db): void
             'description' => $description,
             'reporterEmail' => $anonymous ? maskContact($reporterEmail) : $reporterEmail,
             'reporterPhone' => $anonymous ? maskContact($reporterPhone) : $reporterPhone,
+            'wantsResolutionNotice' => $wantsResolutionNotice,
             'flags' => $flags,
             'anonymous' => $anonymous,
         ],

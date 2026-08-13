@@ -47,6 +47,7 @@ type Report = {
   reporterPhone: string;
   flags: string[];
   anonymous: boolean;
+  wantsResolutionNotice: boolean;
 };
 
 type ReportUpload = {
@@ -167,6 +168,7 @@ export default function Home() {
     volunteers: 0,
   });
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationFeedback, setLocationFeedback] = useState("");
@@ -270,7 +272,8 @@ export default function Home() {
       reporterEmail: String(data.get("reporterEmail") || ""),
       reporterPhone: String(data.get("reporterPhone") || ""),
       flags,
-      anonymous: data.get("anonymous") === "on",
+      anonymous: isAnonymous,
+      wantsResolutionNotice: !isAnonymous && data.get("wantsResolutionNotice") === "on",
     };
 
     setIsSaving(true);
@@ -303,6 +306,7 @@ export default function Home() {
       form.reset();
       setSelectedCategory(categories[0] || "Pas na lancu");
       setSelectedAttachments([]);
+      setIsAnonymous(false);
       setCoordinates(null);
       setLocationFeedback("");
       setFormStartedAt(Date.now());
@@ -576,9 +580,20 @@ export default function Home() {
             </div>
           ) : null}
           <label className="checkbox-line">
-            <input name="anonymous" type="checkbox" />
+            <input
+              checked={isAnonymous}
+              name="anonymous"
+              onChange={(event) => setIsAnonymous(event.target.checked)}
+              type="checkbox"
+            />
             Želim podnijeti anonimnu prijavu
           </label>
+          {!isAnonymous ? (
+            <label className="checkbox-line">
+              <input name="wantsResolutionNotice" type="checkbox" />
+              Želim obavijest o rješavanju
+            </label>
+          ) : null}
           {formFeedback ? (
             <p className={`form-feedback form-feedback--${formFeedback.type}`} role="status">
               {formFeedback.message}

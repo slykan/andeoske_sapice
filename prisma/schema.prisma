@@ -138,6 +138,7 @@ model Report {
   reporterName   String?
   reporterEmail  String?
   reporterPhone  String?
+  wantsResolutionNotice Boolean @default(false)
   createdById    String?
   createdBy      User?                 @relation("ReportCreatedBy", fields: [createdById], references: [id])
   regionId       String?

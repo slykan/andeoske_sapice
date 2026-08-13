@@ -949,6 +949,25 @@ legend {
   overflow-wrap: anywhere;
 }
 
+.report-contact .notice-preference {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.notice-preference svg {
+  flex: 0 0 auto;
+  stroke-width: 2.5;
+}
+
+.notice-preference--yes {
+  color: var(--green);
+}
+
+.notice-preference--no {
+  color: #b6422b;
+}
+
 .status-control {
   gap: 6px;
 }
