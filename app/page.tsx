@@ -382,6 +382,7 @@ export default function Home() {
             <strong>Anđeoske šapice</strong>
             <div>
               <a href="#prijava">Prijava</a>
+              <a href={`${basePath}/privatnost`}>Privatnost</a>
               <a href={`${basePath}/admin`}>Admin</a>
             </div>
           </nav>
