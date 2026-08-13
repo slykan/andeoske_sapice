@@ -1031,6 +1031,7 @@ legend {
 .report-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   grid-column: 1 / -1;
   justify-content: space-between;
@@ -1147,7 +1148,8 @@ legend {
   color: var(--green);
 }
 
-.notification-response--declined {
+.notification-response--declined,
+.notification-response--expired {
   color: #b6422b;
 }
 

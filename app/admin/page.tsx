@@ -199,6 +199,10 @@ function notificationResponseLabel(status: string | null) {
     return "odbijeno";
   }
 
+  if (status === "EXPIRED") {
+    return "već preuzeto";
+  }
+
   return "";
 }
 
@@ -629,6 +633,56 @@ export default function AdminPage() {
     setReportFeedback((current) => ({ ...current, [report.id]: "Obavijest poslana." }));
   }
 
+  async function notifyRegion(report: Report) {
+    setReportFeedback((current) => ({ ...current, [report.id]: "Šaljem obavijest regiji..." }));
+
+    const response = await fetch(adminApiPath, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "notifyRegion",
+        reportId: report.id,
+      }),
+    });
+
+    if (!response.ok) {
+      await loadReports();
+      setReportFeedback((current) => ({
+        ...current,
+        [report.id]: "Obavijest regiji nije poslana.",
+      }));
+      return;
+    }
+
+    await loadReports();
+    setReportFeedback((current) => ({ ...current, [report.id]: "Obavijest poslana regiji." }));
+  }
+
+  async function notifyGroup(report: Report) {
+    setReportFeedback((current) => ({ ...current, [report.id]: "Šaljem obavijest grupi..." }));
+
+    const response = await fetch(adminApiPath, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "notifyGroup",
+        reportId: report.id,
+      }),
+    });
+
+    if (!response.ok) {
+      await loadReports();
+      setReportFeedback((current) => ({
+        ...current,
+        [report.id]: "Obavijest grupi nije poslana.",
+      }));
+      return;
+    }
+
+    await loadReports();
+    setReportFeedback((current) => ({ ...current, [report.id]: "Obavijest poslana grupi." }));
+  }
+
   const volunteers = useMemo(
     () => adminData.users.filter((user) => user.role === "VOLUNTEER" || user.role === "ADMIN"),
     [adminData.users],
@@ -963,6 +1017,24 @@ export default function AdminPage() {
                   >
                     <Mail size={16} />
                     Pošalji obavijest volonteru
+                  </button>
+                  <button
+                    className="button button--quiet"
+                    disabled={hasReportChanges || !report.regionId}
+                    onClick={() => notifyRegion(report)}
+                    type="button"
+                  >
+                    <Mail size={16} />
+                    Pošalji obavijest na regiju
+                  </button>
+                  <button
+                    className="button button--quiet"
+                    disabled={hasReportChanges || !report.organizationId}
+                    onClick={() => notifyGroup(report)}
+                    type="button"
+                  >
+                    <Mail size={16} />
+                    Pošalji obavijest na grupu
                   </button>
                   <div className="report-actions__save">
                     {reportFeedback[report.id] ? (

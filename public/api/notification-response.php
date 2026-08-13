@@ -121,9 +121,14 @@ try {
             n.`id` AS `notificationId`,
             n.`reportId`,
             n.`recipientName`,
-            r.`status` AS `currentStatus`
+            n.`userId`,
+            r.`status` AS `currentStatus`,
+            r.`assignedToId`,
+            r.`organizationId` AS `reportOrganizationId`,
+            u.`organizationId` AS `volunteerOrganizationId`
          FROM `ReportNotification` n
          INNER JOIN `Report` r ON r.`id` = n.`reportId`
+         LEFT JOIN `User` u ON u.`id` = n.`userId`
          WHERE n.`responseToken` = ?
          LIMIT 1
          FOR UPDATE'
@@ -139,6 +144,23 @@ try {
     }
 
     $now = date('Y-m-d H:i:s');
+    $claimedBySomeoneElse = $responseStatus === 'ACCEPTED'
+        && $notification['assignedToId'] !== null
+        && $notification['assignedToId'] !== $notification['userId'];
+
+    if ($claimedBySomeoneElse) {
+        $statement = $db->prepare(
+            'UPDATE `ReportNotification`
+             SET `responseStatus` = ?, `respondedAt` = ?
+             WHERE `id` = ?'
+        );
+        $statement->execute(['EXPIRED', $now, $notification['notificationId']]);
+        $db->commit();
+        http_response_code(409);
+        renderPage('Prijava je već preuzeta', 'Netko drugi je već prihvatio ovu prijavu prije tebe.');
+        exit;
+    }
+
     $statement = $db->prepare(
         'UPDATE `ReportNotification`
          SET `responseStatus` = ?, `respondedAt` = ?
@@ -146,15 +168,19 @@ try {
     );
     $statement->execute([$responseStatus, $now, $notification['notificationId']]);
 
+    $isCurrentlyAssignedResponder = $notification['assignedToId'] !== null
+        && $notification['assignedToId'] === $notification['userId'];
+
     if ($responseStatus === 'ACCEPTED') {
+        $organizationId = $notification['reportOrganizationId'] ?? $notification['volunteerOrganizationId'];
         $statement = $db->prepare(
             'UPDATE `Report`
-             SET `status` = "IN_PROGRESS", `updatedAt` = ?, `closedAt` = NULL
+             SET `status` = "IN_PROGRESS", `assignedToId` = ?, `organizationId` = ?, `updatedAt` = ?, `closedAt` = NULL
              WHERE `id` = ?'
         );
-        $statement->execute([$now, $notification['reportId']]);
+        $statement->execute([$notification['userId'], $organizationId, $now, $notification['reportId']]);
         $note = 'Volonter ' . $notification['recipientName'] . ' prihvatio je prijavu iz email obavijesti.';
-    } else {
+    } elseif ($isCurrentlyAssignedResponder) {
         $statement = $db->prepare(
             'UPDATE `Report`
              SET `status` = "RECEIVED", `assignedToId` = NULL, `updatedAt` = ?, `closedAt` = NULL
@@ -162,9 +188,11 @@ try {
         );
         $statement->execute([$now, $notification['reportId']]);
         $note = 'Volonter ' . $notification['recipientName'] . ' odbio je prijavu iz email obavijesti.';
+    } else {
+        $note = null;
     }
 
-    if ($notification['currentStatus'] !== $nextReportStatus) {
+    if ($note !== null && $notification['currentStatus'] !== $nextReportStatus) {
         $statement = $db->prepare(
             'INSERT INTO `ReportStatusHistory`
              (`id`, `reportId`, `fromStatus`, `toStatus`, `action`, `note`, `createdAt`)
@@ -195,4 +223,4 @@ if ($responseStatus === 'ACCEPTED') {
     exit;
 }
 
-renderPage('Prijava odbijena', 'Prijava je vraćena na Zaprimljeno i volonter je uklonjen.');
+renderPage('Odgovor zaprimljen', 'Hvala na odgovoru.');

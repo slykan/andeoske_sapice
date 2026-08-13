@@ -510,8 +510,14 @@ function reportMapsUrl(array $report): ?string
     return null;
 }
 
-function sendVolunteerMail(array $report, string $recipientName, string $recipientEmail, string $responseToken): array
-{
+function sendVolunteerMail(
+    array $report,
+    string $recipientName,
+    string $recipientEmail,
+    string $responseToken,
+    bool $isBroadcast = false,
+    string $scopeLabel = ''
+): array {
     $env = loadEnv();
     $from = cleanMailHeader((string) (
         $env['MAIL_FROM']
@@ -528,7 +534,9 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
     $adminUrl = "{$scheme}://{$host}/admin";
     $acceptUrl = "{$scheme}://{$host}/api/notification-response.php?token={$responseToken}&action=accept";
     $declineUrl = "{$scheme}://{$host}/api/notification-response.php?token={$responseToken}&action=decline";
-    $subject = 'Dodijeljena prijava ' . $report['publicCode'];
+    $subject = $isBroadcast
+        ? "Nova prijava dostupna u tvojoj {$scopeLabel} - " . $report['publicCode']
+        : 'Dodijeljena prijava ' . $report['publicCode'];
     $statusLabel = array_search($report['status'], REPORT_STATUSES, true) ?: $report['status'];
     $urgencyLabel = [
         'LOW' => 'Niska',
@@ -537,11 +545,14 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
     ][$report['urgency'] ?? ''] ?? 'Srednja';
 
     $mapsUrl = reportMapsUrl($report);
+    $introLine = $isBroadcast
+        ? "Nova prijava je dostupna u tvojoj {$scopeLabel}. Prvi volonter koji prihvati preuzima slucaj."
+        : 'Dodijeljena ti je prijava u sustavu Andeoske sapice.';
 
     $textBody = implode("\n", array_filter([
         "Pozdrav {$recipientName},",
         '',
-        'Dodijeljena ti je prijava u sustavu Andeoske sapice.',
+        $introLine,
         '',
         'Broj prijave: ' . $report['publicCode'],
         'Hitnost: ' . $urgencyLabel,
@@ -572,6 +583,10 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
     $safeAdminUrl = escapeHtml($adminUrl);
     $safeAcceptUrl = escapeHtml($acceptUrl);
     $safeDeclineUrl = escapeHtml($declineUrl);
+    $safeHeading = $isBroadcast ? 'Nova prijava je dostupna' : 'Dodijeljena ti je prijava';
+    $safeIntro = $isBroadcast
+        ? 'Nova prijava je otvorena za preuzimanje u tvojoj ' . escapeHtml($scopeLabel) . '. Prvi volonter koji prihvati preuzima slucaj.'
+        : 'U admin sustavu ti je dodijeljena nova prijava. Pregledaj detalje i preuzmi daljnje korake.';
     $htmlBody = <<<HTML
 <!doctype html>
 <html lang="hr">
@@ -583,13 +598,13 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
             <tr>
               <td style="background:#2f5d50;color:#ffffff;padding:22px 26px;">
                 <div style="font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Andeoske sapice</div>
-                <h1 style="font-size:24px;line-height:1.2;margin:8px 0 0;">Dodijeljena ti je prijava</h1>
+                <h1 style="font-size:24px;line-height:1.2;margin:8px 0 0;">{$safeHeading}</h1>
               </td>
             </tr>
             <tr>
               <td style="padding:24px 26px;">
                 <p style="font-size:16px;line-height:1.55;margin:0 0 18px;">Pozdrav {$safeName},</p>
-                <p style="font-size:16px;line-height:1.55;margin:0 0 22px;">U admin sustavu ti je dodijeljena nova prijava. Pregledaj detalje i preuzmi daljnje korake.</p>
+                <p style="font-size:16px;line-height:1.55;margin:0 0 22px;">{$safeIntro}</p>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 22px;">
                   <tr>
                     <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Broj prijave</td>
@@ -887,6 +902,122 @@ function notifyVolunteer(PDO $db, array $data): void
     respond(200, ['ok' => true]);
 }
 
+function notifyBroadcast(PDO $db, array $data, string $scope): void
+{
+    $publicCode = nullableString($data, 'reportId', 80);
+    if ($publicCode === null) {
+        respond(422, ['error' => 'Report id is required.']);
+    }
+
+    $statement = $db->prepare(
+        'SELECT
+            r.`id`,
+            r.`publicCode`,
+            r.`category`,
+            r.`description`,
+            r.`locationText`,
+            r.`latitude`,
+            r.`longitude`,
+            r.`urgency`,
+            r.`status`,
+            r.`regionId`,
+            r.`organizationId`
+         FROM `Report` r
+         WHERE r.`publicCode` = ?
+         LIMIT 1'
+    );
+    $statement->execute([$publicCode]);
+    $report = $statement->fetch();
+
+    if (!$report) {
+        respond(404, ['error' => 'Report not found.']);
+    }
+
+    if ($scope === 'region') {
+        if (!$report['regionId']) {
+            respond(422, ['error' => 'Report has no region selected.']);
+        }
+        $statement = $db->prepare(
+            "SELECT `id`, `email`, `name` FROM `User`
+             WHERE `regionId` = ? AND `isActive` = 1 AND `role` IN ('VOLUNTEER', 'ADMIN')"
+        );
+        $statement->execute([$report['regionId']]);
+        $scopeLabel = 'regiji';
+    } else {
+        if (!$report['organizationId']) {
+            respond(422, ['error' => 'Report has no group selected.']);
+        }
+        $statement = $db->prepare(
+            "SELECT `id`, `email`, `name` FROM `User`
+             WHERE `organizationId` = ? AND `isActive` = 1 AND `role` IN ('VOLUNTEER', 'ADMIN')"
+        );
+        $statement->execute([$report['organizationId']]);
+        $scopeLabel = 'grupi';
+    }
+
+    $recipients = $statement->fetchAll();
+    $now = date('Y-m-d H:i:s');
+    $sentCount = 0;
+
+    foreach ($recipients as $recipient) {
+        $recipientEmail = trim((string) ($recipient['email'] ?? ''));
+        if ($recipientEmail === '' || !filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+            continue;
+        }
+
+        $recipientName = trim((string) ($recipient['name'] ?? ''));
+        if ($recipientName === '') {
+            $recipientName = $recipientEmail;
+        }
+
+        $responseToken = bin2hex(random_bytes(24));
+        $mail = sendVolunteerMail($report, $recipientName, $recipientEmail, $responseToken, true, $scopeLabel);
+        $status = $mail['sent'] ? 'SENT' : 'FAILED';
+
+        try {
+            $insert = $db->prepare(
+                'INSERT INTO `ReportNotification`
+                 (`id`, `reportId`, `userId`, `recipientName`, `recipientEmail`, `status`, `subject`, `responseToken`, `error`, `createdAt`)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $insert->execute([
+                makeId('notif'),
+                $report['id'],
+                $recipient['id'],
+                $recipientName,
+                $recipientEmail,
+                $status,
+                $mail['subject'],
+                $responseToken,
+                $mail['error'],
+                $now,
+            ]);
+        } catch (Throwable) {
+            continue;
+        }
+
+        if ($mail['sent']) {
+            $sentCount++;
+        }
+    }
+
+    if ($sentCount === 0) {
+        respond(422, ['error' => 'Nijedan volonter s valjanom email adresom nije pronaden.']);
+    }
+
+    respond(200, ['ok' => true, 'sent' => $sentCount]);
+}
+
+function notifyRegion(PDO $db, array $data): void
+{
+    notifyBroadcast($db, $data, 'region');
+}
+
+function notifyGroup(PDO $db, array $data): void
+{
+    notifyBroadcast($db, $data, 'organization');
+}
+
 function assignReport(PDO $db, array $data): void
 {
     $publicCode = nullableString($data, 'reportId', 80);
@@ -1043,6 +1174,14 @@ if ($method === 'PATCH') {
     $data = readJson();
     if (($data['type'] ?? '') === 'notifyVolunteer') {
         notifyVolunteer($db, $data);
+    }
+
+    if (($data['type'] ?? '') === 'notifyRegion') {
+        notifyRegion($db, $data);
+    }
+
+    if (($data['type'] ?? '') === 'notifyGroup') {
+        notifyGroup($db, $data);
     }
 
     if (($data['type'] ?? '') === 'assignment') {
