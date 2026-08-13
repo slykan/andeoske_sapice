@@ -819,15 +819,36 @@ legend {
 }
 
 .notification-log li {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   gap: 10px;
   justify-content: space-between;
 }
 
+.notification-log li > div {
+  display: grid;
+  gap: 3px;
+}
+
 .notification-log span,
 .notification-log small {
   margin: 0;
+}
+
+.notification-response {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.notification-response--accepted {
+  color: var(--green);
+}
+
+.notification-response--declined {
+  color: #8c321f;
 }
 
 .empty-state {
@@ -1036,6 +1057,15 @@ legend {
   .report-actions .button {
     justify-content: center;
     width: 100%;
+  }
+
+  .notification-log li {
+    flex-direction: column;
+  }
+
+  .notification-response {
+    justify-content: flex-start;
+    text-align: left;
   }
 
   .category-form {

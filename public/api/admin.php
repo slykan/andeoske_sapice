@@ -482,7 +482,7 @@ function escapeHtml(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function sendVolunteerMail(array $report, string $recipientName, string $recipientEmail): array
+function sendVolunteerMail(array $report, string $recipientName, string $recipientEmail, string $responseToken): array
 {
     $env = loadEnv();
     $from = cleanMailHeader((string) (
@@ -498,6 +498,8 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
     $host = cleanMailHeader((string) ($_SERVER['HTTP_HOST'] ?? 'andeoske-sapice.app'));
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
     $adminUrl = "{$scheme}://{$host}/admin";
+    $acceptUrl = "{$scheme}://{$host}/api/notification-response.php?token={$responseToken}&action=accept";
+    $declineUrl = "{$scheme}://{$host}/api/notification-response.php?token={$responseToken}&action=decline";
     $subject = 'Dodijeljena prijava ' . $report['publicCode'];
     $statusLabel = array_search($report['status'], REPORT_STATUSES, true) ?: $report['status'];
     $urgencyLabel = [
@@ -518,6 +520,8 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
         'Status: ' . $statusLabel,
         'Opis: ' . $report['description'],
         '',
+        'Prihvati: ' . $acceptUrl,
+        'Odbij: ' . $declineUrl,
         'Admin: ' . $adminUrl,
         '',
         'Ova obavijest je poslana iz admin sucelja.',
@@ -531,6 +535,8 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
     $safeStatus = escapeHtml($statusLabel);
     $safeDescription = nl2br(escapeHtml($report['description']));
     $safeAdminUrl = escapeHtml($adminUrl);
+    $safeAcceptUrl = escapeHtml($acceptUrl);
+    $safeDeclineUrl = escapeHtml($declineUrl);
     $htmlBody = <<<HTML
 <!doctype html>
 <html lang="hr">
@@ -575,7 +581,19 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
                   <div style="color:#6a5f53;font-size:13px;font-weight:700;margin-bottom:6px;">Opis</div>
                   <div style="font-size:15px;line-height:1.55;">{$safeDescription}</div>
                 </div>
-                <a href="{$safeAdminUrl}" style="background:#2f5d50;border-radius:7px;color:#ffffff;display:inline-block;font-size:15px;font-weight:700;padding:12px 18px;text-decoration:none;">Otvori admin</a>
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 18px;">
+                  <tr>
+                    <td style="padding:0 10px 10px 0;">
+                      <a href="{$safeAcceptUrl}" style="background:#2f5d50;border-radius:7px;color:#ffffff;display:inline-block;font-size:15px;font-weight:700;padding:12px 18px;text-decoration:none;">Prihvati</a>
+                    </td>
+                    <td style="padding:0 10px 10px 0;">
+                      <a href="{$safeDeclineUrl}" style="background:#b4523f;border-radius:7px;color:#ffffff;display:inline-block;font-size:15px;font-weight:700;padding:12px 18px;text-decoration:none;">Odbij</a>
+                    </td>
+                    <td style="padding:0 0 10px 0;">
+                      <a href="{$safeAdminUrl}" style="background:#f6f2ea;border:1px solid #ded6c8;border-radius:7px;color:#2f5d50;display:inline-block;font-size:15px;font-weight:700;padding:11px 17px;text-decoration:none;">Otvori admin</a>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
             <tr>
@@ -663,15 +681,16 @@ function notifyVolunteer(PDO $db, array $data): void
         $recipientName = $recipientEmail;
     }
 
-    $mail = sendVolunteerMail($report, $recipientName, $recipientEmail);
+    $responseToken = bin2hex(random_bytes(24));
+    $mail = sendVolunteerMail($report, $recipientName, $recipientEmail, $responseToken);
     $now = date('Y-m-d H:i:s');
     $status = $mail['sent'] ? 'SENT' : 'FAILED';
 
     try {
         $statement = $db->prepare(
             'INSERT INTO `ReportNotification`
-             (`id`, `reportId`, `userId`, `recipientName`, `recipientEmail`, `status`, `subject`, `error`, `createdAt`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             (`id`, `reportId`, `userId`, `recipientName`, `recipientEmail`, `status`, `subject`, `responseToken`, `error`, `createdAt`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $statement->execute([
             makeId('notif'),
@@ -681,6 +700,7 @@ function notifyVolunteer(PDO $db, array $data): void
             $recipientEmail,
             $status,
             $mail['subject'],
+            $responseToken,
             $mail['error'],
             $now,
         ]);

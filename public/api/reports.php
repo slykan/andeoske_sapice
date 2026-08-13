@@ -549,6 +549,8 @@ function listReports(PDO $db): void
                 `recipientName`,
                 `recipientEmail`,
                 `status`,
+                `responseStatus`,
+                `respondedAt`,
                 `createdAt`
              FROM `ReportNotification`
              WHERE `reportId` IN ({$placeholders})
@@ -567,6 +569,8 @@ function listReports(PDO $db): void
                 'recipientName' => $notification['recipientName'],
                 'recipientEmail' => $notification['recipientEmail'],
                 'status' => $notification['status'],
+                'responseStatus' => $notification['responseStatus'],
+                'respondedAt' => $notification['respondedAt'],
                 'createdAt' => $notification['createdAt'],
             ];
         }

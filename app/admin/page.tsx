@@ -1,7 +1,19 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Building2, Edit3, Mail, MapPinned, Plus, Save, Trash2, UserRoundPlus, X } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  Edit3,
+  Mail,
+  MapPinned,
+  Plus,
+  Save,
+  Trash2,
+  UserRoundPlus,
+  X,
+  XCircle,
+} from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const reportsApiPath = `${basePath}/api/reports.php`;
@@ -55,6 +67,8 @@ type ReportNotification = {
   recipientName: string;
   recipientEmail: string;
   status: string;
+  responseStatus: string | null;
+  respondedAt: string | null;
   createdAt: string;
 };
 
@@ -149,6 +163,18 @@ function formatNotificationTime(value: string) {
 
 function notificationStatusLabel(status: string) {
   return status === "SENT" ? "poslano" : "greška";
+}
+
+function notificationResponseLabel(status: string | null) {
+  if (status === "ACCEPTED") {
+    return "prihvaćeno";
+  }
+
+  if (status === "DECLINED") {
+    return "odbijeno";
+  }
+
+  return "";
 }
 
 export default function AdminPage() {
@@ -828,10 +854,26 @@ export default function AdminPage() {
                     <ol>
                       {report.notifications.map((notification) => (
                         <li key={notification.id}>
-                          <span>{formatNotificationTime(notification.createdAt)}</span>
-                          <small>
-                            {notificationStatusLabel(notification.status)} - {notification.recipientName}
-                          </small>
+                          <div>
+                            <span>{formatNotificationTime(notification.createdAt)}</span>
+                            <small>
+                              {notificationStatusLabel(notification.status)} - {notification.recipientName}
+                            </small>
+                          </div>
+                          {notification.responseStatus && notification.respondedAt ? (
+                            <small
+                              className={`notification-response notification-response--${notification.responseStatus.toLowerCase()}`}
+                            >
+                              {notification.responseStatus === "ACCEPTED" ? (
+                                <CheckCircle2 size={16} />
+                              ) : (
+                                <XCircle size={16} />
+                              )}
+                              {formatNotificationTime(notification.respondedAt)} -{" "}
+                              {notification.recipientName} -{" "}
+                              {notificationResponseLabel(notification.responseStatus)}
+                            </small>
+                          ) : null}
                         </li>
                       ))}
                     </ol>

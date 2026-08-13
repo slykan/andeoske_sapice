@@ -238,17 +238,20 @@ model FieldNote {
 }
 
 model ReportNotification {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   reportId       String
-  report         Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  report         Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
   userId         String?
-  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   recipientName  String
   recipientEmail String
-  status         String   @default("SENT")
+  status         String    @default("SENT")
   subject        String
-  error          String?  @db.Text
-  createdAt      DateTime @default(now())
+  responseToken  String?   @unique
+  responseStatus String?
+  respondedAt    DateTime?
+  error          String?   @db.Text
+  createdAt      DateTime  @default(now())
 
   @@index([reportId])
   @@index([userId])
