@@ -527,7 +527,12 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
         'HIGH' => 'Visoka',
     ][$report['urgency'] ?? ''] ?? 'Srednja';
 
-    $textBody = implode("\n", [
+    $mapsUrl = null;
+    if (is_numeric($report['latitude'] ?? null) && is_numeric($report['longitude'] ?? null)) {
+        $mapsUrl = 'https://www.google.com/maps?q=' . $report['latitude'] . ',' . $report['longitude'];
+    }
+
+    $textBody = implode("\n", array_filter([
         "Pozdrav {$recipientName},",
         '',
         'Dodijeljena ti je prijava u sustavu Andeoske sapice.',
@@ -536,6 +541,7 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
         'Hitnost: ' . $urgencyLabel,
         'Kategorija: ' . $report['category'],
         'Lokacija: ' . $report['locationText'],
+        $mapsUrl ? 'Karta: ' . $mapsUrl : null,
         'Status: ' . $statusLabel,
         'Opis: ' . $report['description'],
         '',
@@ -544,13 +550,17 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
         'Admin: ' . $adminUrl,
         '',
         'Ova obavijest je poslana iz admin sucelja.',
-    ]);
+    ], static fn ($line) => $line !== null));
 
     $safeName = escapeHtml($recipientName);
     $safeCode = escapeHtml($report['publicCode']);
     $safeUrgency = escapeHtml($urgencyLabel);
     $safeCategory = escapeHtml($report['category']);
     $safeLocation = escapeHtml($report['locationText']);
+    $safeMapsUrl = $mapsUrl ? escapeHtml($mapsUrl) : null;
+    $locationCell = $safeMapsUrl
+        ? "<a href=\"{$safeMapsUrl}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"color:#2f5d50;text-decoration:underline;\">{$safeLocation}</a>"
+        : $safeLocation;
     $safeStatus = escapeHtml($statusLabel);
     $safeDescription = nl2br(escapeHtml($report['description']));
     $safeAdminUrl = escapeHtml($adminUrl);
@@ -593,7 +603,7 @@ function sendVolunteerMail(array $report, string $recipientName, string $recipie
                   </tr>
                   <tr>
                     <td style="border-top:1px solid #e6ded1;padding:12px 0;color:#6a5f53;font-size:13px;">Lokacija</td>
-                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$safeLocation}</td>
+                    <td style="border-top:1px solid #e6ded1;padding:12px 0;text-align:right;font-weight:700;">{$locationCell}</td>
                   </tr>
                 </table>
                 <div style="background:#f6f2ea;border:1px solid #e6ded1;border-radius:8px;padding:14px 16px;margin:0 0 24px;">
@@ -673,6 +683,8 @@ function notifyVolunteer(PDO $db, array $data): void
             r.`category`,
             r.`description`,
             r.`locationText`,
+            r.`latitude`,
+            r.`longitude`,
             r.`urgency`,
             r.`status`,
             u.`id` AS `userId`,
