@@ -1533,6 +1533,11 @@ legend {
   margin: 0;
 }
 
+.contact-side {
+  display: grid;
+  gap: 16px;
+}
+
 .contact-side article {
   background: var(--paper);
   border: 1px solid var(--line);

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Mail, MapPin, Send, UserRoundPlus } from "lucide-react";
+import { Gift, Mail, MapPin, Send, UserRoundPlus } from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const contactApiPath = `${basePath}/api/contact.php`;
@@ -157,6 +157,17 @@ export default function KontaktPage() {
               Cilj nam je izgraditi mrežu volontera i udruga u svakoj regiji Republike
               Hrvatske, kako nijedan kraj zemlje ne bi ostao bez brze i organizirane pomoći.
               Ako želiš biti dio te mreže, ovo je pravo mjesto za prvi korak.
+            </p>
+          </article>
+
+          <article>
+            <Gift />
+            <h3>Donacije</h3>
+            <p>
+              Svaka donacija - u novcu, opremi ili uslugama - izravno pomaže da prijave brže
+              stignu do životinje kojoj je pomoć potrebna. Javi nam se putem obrasca za
+              dogovor oko načina doniranja, a tvrtkama i sponzorima rado uzvraćamo vidljivošću
+              i promocijom na našoj stranici.
             </p>
           </article>
         </aside>
