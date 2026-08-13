@@ -670,6 +670,11 @@ legend {
   margin-top: 8px;
 }
 
+.attachment-grid--summary {
+  max-width: 170px;
+  width: 100%;
+}
+
 .attachment-thumb {
   align-items: center;
   aspect-ratio: 1;

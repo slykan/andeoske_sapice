@@ -733,16 +733,8 @@ export default function AdminPage() {
                     {report.flags.length ? ` - ${report.flags.join(", ")}` : ""}
                     {report.anonymous ? " - anonimno" : ""}
                   </small>
-                </div>
-                <div className="report-card__place">
-                  <span>{report.place}</span>
-                  <small>{report.description}</small>
-                  <div className="report-contact">
-                    <small>Email: {report.reporterEmail || "Nije upisano"}</small>
-                    <small>Telefon: {report.reporterPhone || "Nije upisano"}</small>
-                  </div>
                   {report.attachments.length > 0 ? (
-                    <div className="attachment-grid">
+                    <div className="attachment-grid attachment-grid--summary">
                       {report.attachments.map((attachment) => (
                         attachment.mimeType.startsWith("image/") ? (
                           <button
@@ -770,6 +762,14 @@ export default function AdminPage() {
                       ))}
                     </div>
                   ) : null}
+                </div>
+                <div className="report-card__place">
+                  <span>{report.place}</span>
+                  <small>{report.description}</small>
+                  <div className="report-contact">
+                    <small>Email: {report.reporterEmail || "Nije upisano"}</small>
+                    <small>Telefon: {report.reporterPhone || "Nije upisano"}</small>
+                  </div>
                   {report.latitude !== null && report.longitude !== null ? (
                     <div className="map-preview">
                       <iframe
