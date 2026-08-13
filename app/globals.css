@@ -193,6 +193,10 @@ h3 {
   padding: 22px;
 }
 
+.notice > div + div {
+  display: none;
+}
+
 .notice svg {
   color: var(--gold);
   flex: 0 0 auto;
@@ -202,6 +206,10 @@ h3 {
   color: rgba(255, 255, 255, 0.76);
   line-height: 1.55;
   margin-top: 5px;
+}
+
+.notice p + p {
+  margin-top: 10px;
 }
 
 .section-heading {

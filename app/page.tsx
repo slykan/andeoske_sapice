@@ -368,6 +368,20 @@ export default function Home() {
           <div>
             <strong>Životinja je u neposrednoj opasnosti?</strong>
             <p>
+              Ako je životinja upravo sada ugrožena, najprije kontaktiraj nadležnu
+              službu, policiju ili dežurnu veterinarsku službu. Ovaj obrazac nam
+              pomaže da prijavu zabilježimo, provjerimo i pratimo, ali ne zamjenjuje
+              hitni poziv.
+            </p>
+            <p>
+              Naš tim će u najkraćem mogućem roku pregledati prijavu, pokušati
+              pomoći životinji i poduzeti potrebne korake kako bi se spriječilo
+              zlostavljanje, zanemarivanje ili daljnja opasnost.
+            </p>
+          </div>
+          <div>
+            <strong>Životinja je u neposrednoj opasnosti?</strong>
+            <p>
               Kontaktiraj nadležnu službu, policiju ili dežurnu veterinarsku službu.
               Ovaj obrazac bilježi prijavu, ali ne zamjenjuje hitni poziv.
             </p>
