@@ -26,7 +26,6 @@ const statuses = [
   "Zaprimljeno",
   "U provjeri",
   "Dodijeljeno",
-  "Proslijeđeno",
   "U tijeku",
   "Zaključeno",
 ];
