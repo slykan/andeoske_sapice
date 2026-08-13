@@ -595,6 +595,8 @@ export default function AdminPage() {
     }));
   }, [reports]);
 
+  const totalReportCount = reports.length;
+
   const visibleSubcategories = selectedSubcategoryCategory
     ? subcategories[selectedSubcategoryCategory] || []
     : [];
@@ -941,6 +943,24 @@ export default function AdminPage() {
                 </li>
               ))}
             </ol>
+            <div className="status-chart" aria-label="Graf statusa prijava">
+              {statusCounts.map(({ status, count }) => {
+                const percentage = totalReportCount > 0 ? Math.round((count / totalReportCount) * 100) : 0;
+                const width = count > 0 ? Math.max(percentage, 6) : 0;
+
+                return (
+                  <div className="status-chart__row" key={`chart-${status}`}>
+                    <div className="status-chart__label">
+                      <span>{status}</span>
+                      <strong>{percentage}%</strong>
+                    </div>
+                    <div className="status-chart__track">
+                      <span style={{ width: `${width}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
 
           <section className="admin-panel">

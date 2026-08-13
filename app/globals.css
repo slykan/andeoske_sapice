@@ -956,6 +956,47 @@ legend {
   border-color: var(--green);
 }
 
+.status-chart {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
+.status-chart__row {
+  display: grid;
+  gap: 6px;
+}
+
+.status-chart__label {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.72);
+  display: flex;
+  font-size: 0.82rem;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.status-chart__label strong {
+  color: #fff;
+  font-size: 0.78rem;
+}
+
+.status-chart__track {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.status-chart__track span {
+  background: linear-gradient(90deg, var(--green), #e3b567);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
 .features {
   display: grid;
   gap: 16px;
