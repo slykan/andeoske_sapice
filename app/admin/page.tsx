@@ -57,6 +57,7 @@ type Report = {
   organizationName: string | null;
   attachments: ReportAttachment[];
   notifications: ReportNotification[];
+  statusHistory: ReportStatusHistory[];
 };
 
 type ReportAttachment = {
@@ -73,6 +74,17 @@ type ReportNotification = {
   status: string;
   responseStatus: string | null;
   respondedAt: string | null;
+  createdAt: string;
+};
+
+type ReportStatusHistory = {
+  id: string;
+  fromStatus: string | null;
+  toStatus: string;
+  action: string;
+  note: string | null;
+  changedByName: string | null;
+  changedByEmail: string | null;
   createdAt: string;
 };
 
@@ -148,6 +160,7 @@ function normalizeReports(reports: Report[]): Report[] {
         )
       : [],
     notifications: Array.isArray(report.notifications) ? report.notifications : [],
+    statusHistory: Array.isArray(report.statusHistory) ? report.statusHistory : [],
   }));
 }
 
@@ -179,6 +192,37 @@ function notificationResponseLabel(status: string | null) {
   }
 
   return "";
+}
+
+function statusHistoryActor(entry: ReportStatusHistory) {
+  if (entry.changedByName || entry.changedByEmail) {
+    return entry.changedByName || entry.changedByEmail;
+  }
+
+  const note = entry.note || "";
+  const volunteerMatch = note.match(/^Volonter\s+(.+?)\s+(prihvatio|odbio)\s+je/i);
+  if (volunteerMatch?.[1]) {
+    return volunteerMatch[1];
+  }
+
+  const adminMatch = note.match(/^Status promijenio\/la\s+(.+?)\s+iz admin pregleda/i);
+  if (adminMatch?.[1]) {
+    return adminMatch[1];
+  }
+
+  if (entry.action === "CREATED") {
+    return "Javni obrazac";
+  }
+
+  return "Sustav";
+}
+
+function statusHistoryText(entry: ReportStatusHistory) {
+  if (entry.fromStatus) {
+    return `${entry.fromStatus} -> ${entry.toStatus}`;
+  }
+
+  return entry.toStatus;
 }
 
 export default function AdminPage() {
@@ -930,6 +974,23 @@ export default function AdminPage() {
                     </ol>
                   ) : (
                     <small>Još nema poslanih obavijesti.</small>
+                  )}
+                </div>
+                <div className="status-history-log">
+                  <strong>Status log</strong>
+                  {report.statusHistory.length > 0 ? (
+                    <ol>
+                      {report.statusHistory.map((entry) => (
+                        <li key={entry.id}>
+                          <ClipboardList size={15} aria-hidden="true" />
+                          <span>{formatNotificationTime(entry.createdAt)}</span>
+                          <small>{statusHistoryActor(entry)}</small>
+                          <small>{statusHistoryText(entry)}</small>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <small>Još nema promjena statusa.</small>
                   )}
                 </div>
               </article>

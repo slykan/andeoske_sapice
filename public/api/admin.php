@@ -118,6 +118,25 @@ function requireAdmin(): void
     }
 }
 
+function currentAdminName(): string
+{
+    $username = trim((string) ($_SESSION['admin_username'] ?? ''));
+    if ($username !== '') {
+        return $username;
+    }
+
+    $env = loadEnv();
+    $configuredUsername = trim((string) (
+        $env['ADMIN_USERNAME']
+        ?? $env['ADMIN_EMAIL']
+        ?? getenv('ADMIN_USERNAME')
+        ?: getenv('ADMIN_EMAIL')
+        ?: ''
+    ));
+
+    return $configuredUsername !== '' ? $configuredUsername : 'Admin';
+}
+
 function makeId(string $prefix): string
 {
     return $prefix . '_' . bin2hex(random_bytes(12));
@@ -779,6 +798,7 @@ function assignReport(PDO $db, array $data): void
         ]);
 
         if ($report['status'] !== $status) {
+            $adminName = currentAdminName();
             $statement = $db->prepare(
                 'INSERT INTO `ReportStatusHistory`
                  (`id`, `reportId`, `fromStatus`, `toStatus`, `action`, `note`, `createdAt`)
@@ -789,7 +809,7 @@ function assignReport(PDO $db, array $data): void
                 $report['id'],
                 $report['status'],
                 $status,
-                'Status i dodjela spremljeni iz admin pregleda.',
+                'Status promijenio/la ' . $adminName . ' iz admin pregleda.',
                 $now,
             ]);
         }

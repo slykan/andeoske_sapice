@@ -991,7 +991,8 @@ legend {
   justify-content: flex-end;
 }
 
-.notification-log {
+.notification-log,
+.status-history-log {
   background: #fbfaf7;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1001,19 +1002,22 @@ legend {
   padding: 10px 12px;
 }
 
-.notification-log strong {
+.notification-log strong,
+.status-history-log strong {
   color: var(--ink);
   font-size: 0.88rem;
 }
 
-.notification-log ol {
+.notification-log ol,
+.status-history-log ol {
   display: grid;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.notification-log li {
+.notification-log li,
+.status-history-log li {
   align-items: center;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -1022,7 +1026,8 @@ legend {
   padding: 8px 0;
 }
 
-.notification-log li:last-child {
+.notification-log li:last-child,
+.status-history-log li:last-child {
   border-bottom: 0;
   padding-bottom: 0;
 }
@@ -1035,9 +1040,25 @@ legend {
 }
 
 .notification-log span,
-.notification-log small {
+.notification-log small,
+.status-history-log span,
+.status-history-log small {
   margin: 0;
   white-space: nowrap;
+}
+
+.status-history-log {
+  grid-column: 1 / -1;
+}
+
+.status-history-log li {
+  color: var(--muted);
+}
+
+.status-history-log svg {
+  color: var(--green);
+  flex: 0 0 auto;
+  stroke-width: 2.3;
 }
 
 .notification-response {
@@ -1366,9 +1387,10 @@ legend {
     width: 100%;
   }
 
-  .notification-log li {
+  .notification-log li,
+  .status-history-log li {
     align-items: flex-start;
-    grid-template-columns: 1fr;
+    flex-wrap: wrap;
   }
 
   .notification-response {

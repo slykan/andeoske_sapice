@@ -102,7 +102,10 @@ startAdminSession();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
-    respond(200, ['isAdmin' => !empty($_SESSION['is_admin'])]);
+    respond(200, [
+        'isAdmin' => !empty($_SESSION['is_admin']),
+        'username' => $_SESSION['admin_username'] ?? null,
+    ]);
 }
 
 if ($method === 'POST') {
@@ -117,6 +120,7 @@ if ($method === 'POST') {
 
     session_regenerate_id(true);
     $_SESSION['is_admin'] = true;
+    $_SESSION['admin_username'] = trim($username);
     respond(200, ['isAdmin' => true]);
 }
 

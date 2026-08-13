@@ -463,6 +463,7 @@ function reportFromRow(array $row): array
         'organizationName' => $row['organizationName'],
         'attachments' => $attachments,
         'notifications' => [],
+        'statusHistory' => [],
     ];
 }
 
@@ -593,6 +594,42 @@ function listReports(PDO $db): void
                 'responseStatus' => $notification['responseStatus'],
                 'respondedAt' => $notification['respondedAt'],
                 'createdAt' => $notification['createdAt'],
+            ];
+        }
+
+        $statement = $db->prepare(
+            "SELECT
+                h.`id`,
+                h.`reportId`,
+                h.`fromStatus`,
+                h.`toStatus`,
+                h.`action`,
+                h.`note`,
+                h.`createdAt`,
+                u.`name` AS `changedByName`,
+                u.`email` AS `changedByEmail`
+             FROM `ReportStatusHistory` h
+             LEFT JOIN `User` u ON u.`id` = h.`changedById`
+             WHERE h.`reportId` IN ({$placeholders})
+             ORDER BY h.`createdAt` DESC"
+        );
+        $statement->execute($reportIds);
+
+        foreach ($statement->fetchAll() as $history) {
+            $reportId = $history['reportId'];
+            if (!isset($reports[$reportId])) {
+                continue;
+            }
+
+            $reports[$reportId]['statusHistory'][] = [
+                'id' => $history['id'],
+                'fromStatus' => $history['fromStatus'] ? (STATUS_FROM_DB[$history['fromStatus']] ?? $history['fromStatus']) : null,
+                'toStatus' => STATUS_FROM_DB[$history['toStatus']] ?? $history['toStatus'],
+                'action' => $history['action'],
+                'note' => $history['note'],
+                'changedByName' => $history['changedByName'],
+                'changedByEmail' => $history['changedByEmail'],
+                'createdAt' => $history['createdAt'],
             ];
         }
     }
