@@ -250,6 +250,7 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState("Svi statusi");
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
   const [regionFilter, setRegionFilter] = useState("Sve regije");
+  const [reportPage, setReportPage] = useState(1);
 
   useEffect(() => {
     loadSession();
@@ -634,6 +635,22 @@ export default function AdminPage() {
     });
   }, [reports, statusFilter, urgencyFilter, regionFilter]);
 
+  const reportsPerPage = 10;
+  const totalReportPages = Math.max(1, Math.ceil(visibleReports.length / reportsPerPage));
+
+  useEffect(() => {
+    setReportPage(1);
+  }, [statusFilter, urgencyFilter, regionFilter]);
+
+  useEffect(() => {
+    setReportPage((current) => Math.min(current, totalReportPages));
+  }, [totalReportPages]);
+
+  const pagedReports = useMemo(() => {
+    const start = (reportPage - 1) * reportsPerPage;
+    return visibleReports.slice(start, start + reportsPerPage);
+  }, [visibleReports, reportPage]);
+
   const statusCounts = useMemo(() => {
     return statuses.map((status) => ({
       status,
@@ -772,7 +789,7 @@ export default function AdminPage() {
           </div>
 
           <div className="report-list">
-            {visibleReports.map((report) => {
+            {pagedReports.map((report) => {
               const draft = draftForReport(report);
               const hasReportChanges = reportDraftChanged(report, draft);
               const reportOrganizations = organizationsForRegion(draft.regionId || null);
@@ -1015,6 +1032,30 @@ export default function AdminPage() {
               <p className="empty-state">Nema prijava za odabrane filtere.</p>
             ) : null}
           </div>
+
+          {visibleReports.length > reportsPerPage ? (
+            <div className="pagination">
+              <button
+                className="button button--quiet"
+                disabled={reportPage <= 1}
+                onClick={() => setReportPage((current) => Math.max(1, current - 1))}
+                type="button"
+              >
+                Prethodna
+              </button>
+              <span>
+                Stranica {reportPage} / {totalReportPages}
+              </span>
+              <button
+                className="button button--quiet"
+                disabled={reportPage >= totalReportPages}
+                onClick={() => setReportPage((current) => Math.min(totalReportPages, current + 1))}
+                type="button"
+              >
+                Sljedeća
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <aside className="admin-side">

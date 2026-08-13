@@ -803,6 +803,20 @@ legend {
   gap: 10px;
 }
 
+.pagination {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.pagination span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .report-card {
   align-items: center;
   background: var(--paper);
