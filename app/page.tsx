@@ -379,7 +379,8 @@ export default function Home() {
         </div>
         <div className="hero__content">
           <nav className="topbar" aria-label="Glavna navigacija">
-            <strong>Anđeoske šapice</strong>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt="Anđeoske šapice" className="topbar__logo" src={`${basePath}/logo.png`} />
             <div>
               <a href="#prijava">Prijava</a>
               <a href={`${basePath}/privatnost`}>Privatnost</a>
