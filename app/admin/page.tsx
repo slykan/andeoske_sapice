@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Building2, MapPinned, Plus, Save, Trash2, UserRoundPlus } from "lucide-react";
+import { Building2, Edit3, MapPinned, Plus, Save, Trash2, UserRoundPlus, X } from "lucide-react";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const reportsApiPath = `${basePath}/api/reports.php`;
@@ -106,6 +106,9 @@ export default function AdminPage() {
   const [loginFeedback, setLoginFeedback] = useState("");
   const [categoryFeedback, setCategoryFeedback] = useState("");
   const [adminFeedback, setAdminFeedback] = useState("");
+  const [editingRegion, setEditingRegion] = useState<Region | null>(null);
+  const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [statusFilter, setStatusFilter] = useState("Svi statusi");
   const [urgencyFilter, setUrgencyFilter] = useState("Sve hitnosti");
   const [regionFilter, setRegionFilter] = useState("Sve regije");
@@ -306,7 +309,12 @@ export default function AdminPage() {
     setAdminFeedback("Nije spremljeno. Provjeri obavezna polja.");
   }
 
-  async function updateAdminEntity(event: FormEvent<HTMLFormElement>, type: string) {
+  async function saveAdminEntity(event: FormEvent<HTMLFormElement>, type: string, editingId?: string) {
+    if (!editingId) {
+      await createAdminEntity(event, type);
+      return;
+    }
+
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
@@ -314,17 +322,33 @@ export default function AdminPage() {
     const response = await fetch(adminApiPath, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, ...data }),
+      body: JSON.stringify({ type, id: editingId, ...data }),
     });
 
     if (response.ok) {
       setAdminData((await response.json()) as AdminData);
       setAdminFeedback("Izmjene su spremljene.");
+      form.reset();
+      cancelEntityEdit(type);
       await loadReports();
       return;
     }
 
     setAdminFeedback("Izmjene nisu spremljene.");
+  }
+
+  function cancelEntityEdit(type: string) {
+    if (type === "region") {
+      setEditingRegion(null);
+    }
+
+    if (type === "organization") {
+      setEditingOrganization(null);
+    }
+
+    if (type === "user") {
+      setEditingUser(null);
+    }
   }
 
   async function deleteAdminEntity(type: string, id: string) {
@@ -608,24 +632,45 @@ export default function AdminPage() {
               <h3>Regije</h3>
               <MapPinned size={18} />
             </div>
-            <form className="stack-form" onSubmit={(event) => createAdminEntity(event, "region")}>
-              <input aria-label="Naziv regije" name="name" placeholder="Npr. Zagreb i okolica" />
-              <button className="button button--primary" type="submit">
-                <Plus size={18} />
-                Dodaj
-              </button>
+            <form
+              className="stack-form"
+              key={editingRegion?.id || "new-region"}
+              onSubmit={(event) => saveAdminEntity(event, "region", editingRegion?.id)}
+            >
+              <input
+                aria-label="Naziv regije"
+                name="name"
+                defaultValue={editingRegion?.name || ""}
+                placeholder="Npr. Zagreb i okolica"
+              />
+              <div className="form-actions">
+                <button className="button button--primary" type="submit">
+                  {editingRegion ? <Save size={18} /> : <Plus size={18} />}
+                  {editingRegion ? "Spremi izmjene" : "Dodaj"}
+                </button>
+                {editingRegion ? (
+                  <button
+                    className="button button--quiet"
+                    onClick={() => cancelEntityEdit("region")}
+                    type="button"
+                  >
+                    <X size={18} />
+                    Odustani
+                  </button>
+                ) : null}
+              </div>
             </form>
             <div className="compact-list">
               {adminData.regions.map((region) => (
-                <form
-                  className="edit-row"
-                  key={region.id}
-                  onSubmit={(event) => updateAdminEntity(event, "region")}
-                >
-                  <input name="id" type="hidden" value={region.id} />
-                  <input aria-label="Naziv regije" name="name" defaultValue={region.name} />
-                  <button className="icon-button" title="Spremi regiju" type="submit">
-                    <Save size={16} />
+                <div className="list-row" key={region.id}>
+                  <span>{region.name}</span>
+                  <button
+                    className="icon-button"
+                    onClick={() => setEditingRegion(region)}
+                    title="Uredi regiju"
+                    type="button"
+                  >
+                    <Edit3 size={16} />
                   </button>
                   <button
                     className="icon-button icon-button--danger"
@@ -635,7 +680,7 @@ export default function AdminPage() {
                   >
                     <Trash2 size={16} />
                   </button>
-                </form>
+                </div>
               ))}
             </div>
           </section>
@@ -645,9 +690,22 @@ export default function AdminPage() {
               <h3>Grupe i udruge</h3>
               <Building2 size={18} />
             </div>
-            <form className="stack-form" onSubmit={(event) => createAdminEntity(event, "organization")}>
-              <input aria-label="Naziv grupe" name="name" placeholder="Naziv grupe ili udruge" />
-              <select aria-label="Regija grupe" name="regionId" defaultValue="">
+            <form
+              className="stack-form"
+              key={editingOrganization?.id || "new-organization"}
+              onSubmit={(event) => saveAdminEntity(event, "organization", editingOrganization?.id)}
+            >
+              <input
+                aria-label="Naziv grupe"
+                name="name"
+                defaultValue={editingOrganization?.name || ""}
+                placeholder="Naziv grupe ili udruge"
+              />
+              <select
+                aria-label="Regija grupe"
+                name="regionId"
+                defaultValue={editingOrganization?.regionId || ""}
+              >
                 <option value="">Bez regije</option>
                 {adminData.regions.map((region) => (
                   <option key={region.id} value={region.id}>
@@ -656,50 +714,53 @@ export default function AdminPage() {
                 ))}
               </select>
               <div className="form-grid form-grid--compact">
-                <input aria-label="Grad" name="city" placeholder="Grad" />
-                <input aria-label="Telefon" name="phone" placeholder="Telefon" />
+                <input aria-label="Grad" name="city" defaultValue={editingOrganization?.city || ""} placeholder="Grad" />
+                <input
+                  aria-label="Telefon"
+                  name="phone"
+                  defaultValue={editingOrganization?.phone || ""}
+                  placeholder="Telefon"
+                />
               </div>
-              <input aria-label="Email grupe" name="email" placeholder="Email" type="email" />
-              <button className="button button--primary" type="submit">
-                <Plus size={18} />
-                Dodaj
-              </button>
+              <input
+                aria-label="Email grupe"
+                name="email"
+                defaultValue={editingOrganization?.email || ""}
+                placeholder="Email"
+                type="email"
+              />
+              <div className="form-actions">
+                <button className="button button--primary" type="submit">
+                  {editingOrganization ? <Save size={18} /> : <Plus size={18} />}
+                  {editingOrganization ? "Spremi izmjene" : "Dodaj"}
+                </button>
+                {editingOrganization ? (
+                  <button
+                    className="button button--quiet"
+                    onClick={() => cancelEntityEdit("organization")}
+                    type="button"
+                  >
+                    <X size={18} />
+                    Odustani
+                  </button>
+                ) : null}
+              </div>
             </form>
             <div className="compact-list">
               {adminData.organizations.map((organization) => (
-                <form
-                  className="edit-row edit-row--stacked"
-                  key={organization.id}
-                  onSubmit={(event) => updateAdminEntity(event, "organization")}
-                >
-                  <input name="id" type="hidden" value={organization.id} />
-                  <input aria-label="Naziv grupe" name="name" defaultValue={organization.name} />
-                  <select aria-label="Regija grupe" name="regionId" defaultValue={organization.regionId || ""}>
-                    <option value="">Bez regije</option>
-                    {adminData.regions.map((region) => (
-                      <option key={region.id} value={region.id}>
-                        {region.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input aria-label="Grad grupe" name="city" defaultValue={organization.city || ""} placeholder="Grad" />
-                  <input
-                    aria-label="Telefon grupe"
-                    name="phone"
-                    defaultValue={organization.phone || ""}
-                    placeholder="Telefon"
-                  />
-                  <input
-                    aria-label="Email grupe"
-                    name="email"
-                    defaultValue={organization.email || ""}
-                    placeholder="Email"
-                    type="email"
-                  />
-                  <div className="edit-row__actions">
-                    <button className="icon-button" title="Spremi grupu" type="submit">
-                      <Save size={16} />
-                    </button>
+                <div className="list-row" key={organization.id}>
+                  <span>
+                    {organization.name}
+                    {organization.regionName ? ` - ${organization.regionName}` : ""}
+                  </span>
+                  <button
+                    className="icon-button"
+                    onClick={() => setEditingOrganization(organization)}
+                    title="Uredi grupu"
+                    type="button"
+                  >
+                    <Edit3 size={16} />
+                  </button>
                     <button
                       className="icon-button icon-button--danger"
                       onClick={() => deleteAdminEntity("organization", organization.id)}
@@ -708,8 +769,7 @@ export default function AdminPage() {
                     >
                       <Trash2 size={16} />
                     </button>
-                  </div>
-                </form>
+                </div>
               ))}
             </div>
           </section>
@@ -719,26 +779,46 @@ export default function AdminPage() {
               <h3>Korisnici i volonteri</h3>
               <UserRoundPlus size={18} />
             </div>
-            <form className="stack-form" onSubmit={(event) => createAdminEntity(event, "user")}>
-              <input aria-label="Ime korisnika" name="name" placeholder="Ime i prezime" />
-              <input aria-label="Email korisnika" name="email" placeholder="Email" type="email" />
+            <form
+              className="stack-form"
+              key={editingUser?.id || "new-user"}
+              onSubmit={(event) => saveAdminEntity(event, "user", editingUser?.id)}
+            >
               <input
-                aria-label="Lozinka korisnika"
+                aria-label="Ime korisnika"
+                name="name"
+                defaultValue={editingUser?.name || ""}
+                placeholder="Ime i prezime"
+              />
+              <input
+                aria-label="Email korisnika"
+                name="email"
+                defaultValue={editingUser?.email || ""}
+                placeholder="Email"
+                type="email"
+              />
+              <input
+                aria-label={editingUser ? "Nova lozinka korisnika" : "Lozinka korisnika"}
                 name="password"
-                placeholder="Lozinka"
-                required
+                placeholder={editingUser ? "Nova lozinka" : "Lozinka"}
+                required={!editingUser}
                 type="password"
               />
-              <input aria-label="Telefon korisnika" name="phone" placeholder="Telefon" />
+              <input
+                aria-label="Telefon korisnika"
+                name="phone"
+                defaultValue={editingUser?.phone || ""}
+                placeholder="Telefon"
+              />
               <div className="form-grid form-grid--compact">
-                <select aria-label="Uloga korisnika" name="role" defaultValue="VOLUNTEER">
+                <select aria-label="Uloga korisnika" name="role" defaultValue={editingUser?.role || "VOLUNTEER"}>
                   {userRoles.map((role) => (
                     <option key={role} value={role}>
                       {role}
                     </option>
                   ))}
                 </select>
-                <select aria-label="Regija korisnika" name="regionId" defaultValue="">
+                <select aria-label="Regija korisnika" name="regionId" defaultValue={editingUser?.regionId || ""}>
                   <option value="">Bez regije</option>
                   {adminData.regions.map((region) => (
                     <option key={region.id} value={region.id}>
@@ -747,7 +827,7 @@ export default function AdminPage() {
                   ))}
                 </select>
               </div>
-              <select aria-label="Grupa korisnika" name="organizationId" defaultValue="">
+              <select aria-label="Grupa korisnika" name="organizationId" defaultValue={editingUser?.organizationId || ""}>
                 <option value="">Bez grupe</option>
                 {adminData.organizations.map((organization) => (
                   <option key={organization.id} value={organization.id}>
@@ -755,66 +835,38 @@ export default function AdminPage() {
                   </option>
                 ))}
               </select>
-              <button className="button button--primary" type="submit">
-                <Plus size={18} />
-                Dodaj
-              </button>
+              <div className="form-actions">
+                <button className="button button--primary" type="submit">
+                  {editingUser ? <Save size={18} /> : <Plus size={18} />}
+                  {editingUser ? "Spremi izmjene" : "Dodaj"}
+                </button>
+                {editingUser ? (
+                  <button
+                    className="button button--quiet"
+                    onClick={() => cancelEntityEdit("user")}
+                    type="button"
+                  >
+                    <X size={18} />
+                    Odustani
+                  </button>
+                ) : null}
+              </div>
             </form>
             <div className="compact-list">
               {adminData.users.map((user) => (
-                <form
-                  className="edit-row edit-row--stacked"
-                  key={user.id}
-                  onSubmit={(event) => updateAdminEntity(event, "user")}
-                >
-                  <input name="id" type="hidden" value={user.id} />
-                  <input aria-label="Ime korisnika" name="name" defaultValue={user.name || ""} placeholder="Ime" />
-                  <input
-                    aria-label="Email korisnika"
-                    name="email"
-                    defaultValue={user.email}
-                    placeholder="Email"
-                    type="email"
-                  />
-                  <input
-                    aria-label="Nova lozinka korisnika"
-                    name="password"
-                    placeholder="Nova lozinka"
-                    type="password"
-                  />
-                  <input
-                    aria-label="Telefon korisnika"
-                    name="phone"
-                    defaultValue={user.phone || ""}
-                    placeholder="Telefon"
-                  />
-                  <select aria-label="Uloga korisnika" name="role" defaultValue={user.role}>
-                    {userRoles.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
-                  <select aria-label="Regija korisnika" name="regionId" defaultValue={user.regionId || ""}>
-                    <option value="">Bez regije</option>
-                    {adminData.regions.map((region) => (
-                      <option key={region.id} value={region.id}>
-                        {region.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select aria-label="Grupa korisnika" name="organizationId" defaultValue={user.organizationId || ""}>
-                    <option value="">Bez grupe</option>
-                    {adminData.organizations.map((organization) => (
-                      <option key={organization.id} value={organization.id}>
-                        {organization.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="edit-row__actions">
-                    <button className="icon-button" title="Spremi korisnika" type="submit">
-                      <Save size={16} />
-                    </button>
+                <div className="list-row" key={user.id}>
+                  <span>
+                    {user.name || user.email} - {user.role}
+                    {user.regionName ? ` - ${user.regionName}` : ""}
+                  </span>
+                  <button
+                    className="icon-button"
+                    onClick={() => setEditingUser(user)}
+                    title="Uredi korisnika"
+                    type="button"
+                  >
+                    <Edit3 size={16} />
+                  </button>
                     <button
                       className="icon-button icon-button--danger"
                       onClick={() => deleteAdminEntity("user", user.id)}
@@ -823,8 +875,7 @@ export default function AdminPage() {
                     >
                       <Trash2 size={16} />
                     </button>
-                  </div>
-                </form>
+                </div>
               ))}
             </div>
             {adminFeedback ? (

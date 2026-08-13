@@ -451,7 +451,7 @@ legend {
   overflow: auto;
 }
 
-.compact-list span {
+.compact-list > span {
   background: #f0ebe1;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -462,7 +462,8 @@ legend {
   padding: 8px 10px;
 }
 
-.edit-row {
+.list-row {
+  align-items: center;
   background: #f0ebe1;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -472,18 +473,17 @@ legend {
   padding: 8px;
 }
 
-.edit-row--stacked {
-  grid-template-columns: 1fr;
+.list-row span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+  min-width: 0;
 }
 
-.edit-row input,
-.edit-row select {
-  min-height: 36px;
-  padding-block: 7px;
-}
-
-.edit-row__actions {
+.form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
