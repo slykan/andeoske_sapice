@@ -929,7 +929,7 @@ export default function AdminPage() {
                 </div>
                 <div className="report-actions">
                   <button
-                    className="button button--quiet"
+                    className={`button ${report.assignedToId ? "button--success" : "button--quiet"}`}
                     disabled={hasReportChanges || !report.assignedToId}
                     onClick={() => notifyVolunteer(report)}
                     type="button"

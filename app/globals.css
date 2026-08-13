@@ -175,6 +175,15 @@ h3 {
   color: var(--ink);
 }
 
+.button--success {
+  background: #2f9e56;
+  color: #fff;
+}
+
+.button--success:disabled {
+  opacity: 0.6;
+}
+
 .band,
 .workspace,
 .features {
