@@ -15,7 +15,8 @@ export default function PrivatnostPage() {
       <header className="privacy__top">
         <nav className="topbar" aria-label="Glavna navigacija">
           <a className="privacy__brand" href={`${basePath}/`}>
-            Anđeoske šapice
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt="Anđeoske šapice" className="topbar__logo" src={`${basePath}/logo.png`} />
           </a>
           <div>
             <a href={`${basePath}/#prijava`}>Prijava</a>
