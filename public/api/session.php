@@ -80,6 +80,23 @@ function passwordMatches(string $password, array $env): bool
     return $plain !== '' && hash_equals($plain, $password);
 }
 
+function usernameMatches(string $username, array $env): bool
+{
+    $expected = trim((string) (
+        $env['ADMIN_USERNAME']
+        ?? $env['ADMIN_EMAIL']
+        ?? getenv('ADMIN_USERNAME')
+        ?: getenv('ADMIN_EMAIL')
+        ?: ''
+    ));
+
+    if ($expected === '') {
+        return true;
+    }
+
+    return hash_equals(mb_strtolower($expected), mb_strtolower(trim($username)));
+}
+
 startAdminSession();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -90,9 +107,11 @@ if ($method === 'GET') {
 
 if ($method === 'POST') {
     $data = readJson();
+    $username = (string) ($data['username'] ?? '');
     $password = (string) ($data['password'] ?? '');
+    $env = loadEnv();
 
-    if (!passwordMatches($password, loadEnv())) {
+    if (!usernameMatches($username, $env) || !passwordMatches($password, $env)) {
         respond(401, ['error' => 'Invalid password.']);
     }
 

@@ -273,13 +273,14 @@ export default function AdminPage() {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
+    const username = String(data.get("username") || "");
     const password = String(data.get("password") || "");
 
     try {
       const response = await fetch(sessionApiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
 
       if (!response.ok) {
@@ -619,15 +620,15 @@ export default function AdminPage() {
           <a href={`${basePath}/`}>Anđeoske šapice</a>
           <h1>Admin prijava</h1>
           <form autoComplete="on" className="login-form" onSubmit={login}>
-            <label className="password-manager-field">
-              Korisnik
+            <label>
+              Email
               <input
                 autoComplete="username"
+                autoFocus
                 name="username"
-                readOnly
-                tabIndex={-1}
-                type="text"
-                value="admin"
+                placeholder="admin@email.hr"
+                required
+                type="email"
               />
             </label>
             <label>
@@ -636,6 +637,7 @@ export default function AdminPage() {
                 autoComplete="current-password"
                 name="password"
                 placeholder="Admin lozinka"
+                required
                 type="password"
               />
             </label>
