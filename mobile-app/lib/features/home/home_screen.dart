@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
-                    'assets/images/app_icon.png',
+                    'assets/images/logo.png',
                     width: 140,
                     height: 140,
                   ),
