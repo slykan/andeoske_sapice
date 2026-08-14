@@ -54,8 +54,25 @@ class AndeoskeSapiceApp extends StatelessWidget {
       title: 'Anđeoske šapice',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+        scaffoldBackgroundColor: Colors.transparent,
       ),
       routerConfig: appRouter,
+      // Paints the decorative background once, behind every screen's
+      // Scaffold (which is made transparent via scaffoldBackgroundColor
+      // above), instead of repeating an Image.asset in each screen file.
+      builder: (context, child) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/background.jpg',
+                fit: BoxFit.cover,
+              ),
+            ),
+            ?child,
+          ],
+        );
+      },
     );
   }
 }
