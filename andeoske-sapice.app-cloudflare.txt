@@ -1,0 +1,38 @@
+$ORIGIN andeoske-sapice.app.
+$TTL 14400
+
+@                       IN A       185.213.27.139
+@                       IN MX 0    andeoske-sapice.app.
+@                       IN TXT     "v=spf1 +a +mx +ip4:185.213.27.139 ~all"
+
+mail                    IN CNAME   andeoske-sapice.app.
+www                     IN CNAME   andeoske-sapice.app.
+ftp                     IN A       185.213.27.139
+autodiscover            IN A       185.213.27.139
+cpanel                  IN A       185.213.27.139
+webdisk                 IN A       185.213.27.139
+webmail                 IN A       185.213.27.139
+cpcalendars             IN A       185.213.27.139
+cpcontacts              IN A       185.213.27.139
+autoconfig              IN A       185.213.27.139
+whm                     IN A       185.213.27.139
+
+_autodiscover._tcp      IN SRV     0 0 443 cpanelemaildiscovery.cpanel.net.
+
+_caldav._tcp            IN SRV     0 0 2079 andeoske-sapice.app.
+_caldav._tcp            IN TXT     "path=/"
+
+_carddav._tcp           IN SRV     0 0 2079 andeoske-sapice.app.
+_carddav._tcp           IN TXT     "path=/"
+
+_caldavs._tcp           IN SRV     0 0 2080 andeoske-sapice.app.
+_caldavs._tcp           IN TXT     "path=/"
+
+_carddavs._tcp          IN SRV     0 0 2080 andeoske-sapice.app.
+_carddavs._tcp          IN TXT     "path=/"
+
+_dmarc                  IN TXT     "v=DMARC1; p=none;"
+
+default._domainkey      IN TXT     ("v=DKIM1; k=rsa; "
+                                    "p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq4mAN4LEsUe0NSa7M+CoIRK7G43C6QeK8Touv/393wDeK8+QO2TcyFDFoYe6QfJgnpX0bFgAHfaQRvH3QcKqt+S0LUmlvMf1kXYybjnsS2GB7ZVznBaVaa/SV/rDiENtmniwKkDV49ryb2uB70pBL/r1Ql+aB5U8O0AImnUIEAH8UhXujyJKc6JVCBoseEIQW"
+                                    "VGDRzpR+prTvJGzoFNi+Z6+kDTXMc/i02IQxdz0St4ysF6R1GL9Q8ZUyk91zda5o6yJ1fxD2tf5QN+FpFtU+VIhevXXjrlNk/eGID58wIyvbhEtyn6uhhroKkKj5XLQmeqlhcbQULcuVm70z9dg8QIDAQAB;")

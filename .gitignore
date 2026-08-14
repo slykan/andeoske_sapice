@@ -29,3 +29,8 @@ Thumbs.db
 uploads/
 storage/
 
+# signing keys / secrets — never commit
+Android screens/ANDEOSKE-SAPICE-KEYSTORE-BACKUP/
+*.jks
+key.properties
+
