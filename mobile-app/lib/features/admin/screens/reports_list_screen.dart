@@ -44,6 +44,11 @@ class ReportsListScreen extends ConsumerWidget {
         title: const Text('Prijave'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.home_outlined),
+            tooltip: 'Naslovnica',
+            onPressed: () => context.go('/'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Odjava',
             onPressed: () async {
