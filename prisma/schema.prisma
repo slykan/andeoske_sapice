@@ -44,6 +44,12 @@ enum AuditAction {
   CLOSED
 }
 
+enum NotifyChannel {
+  EMAIL
+  PUSH
+  BOTH
+}
+
 model User {
   id              String                @id @default(cuid())
   email           String                @unique
@@ -61,6 +67,7 @@ model User {
   fieldNotes      FieldNote[]
   notifications   ReportNotification[]
   isActive        Boolean               @default(true)
+  notifyChannel   NotifyChannel         @default(EMAIL)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 

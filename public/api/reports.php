@@ -371,9 +371,14 @@ function validateSubmissionSecurity(array $data): void
 
 function startAdminSession(): void
 {
+    // 60-day session so admins/volunteers using the mobile app aren't asked
+    // to log in again every time the server-side session would otherwise
+    // be garbage-collected.
+    $sessionLifetime = 60 * 24 * 60 * 60;
+    ini_set('session.gc_maxlifetime', (string) $sessionLifetime);
     session_name('andeoske_admin');
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => $sessionLifetime,
         'path' => '/',
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,
